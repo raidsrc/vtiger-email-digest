@@ -6,10 +6,6 @@ app = FastAPI()
 connection = sqlite3.connect("db.db")
 cursor = connection.cursor()
 
-
-
-
-
 @app.get("/")
 def read_root():
     now_str = str(datetime.now())
@@ -36,6 +32,7 @@ def read_item_2(number: int, q: str | None = None):
 @app.get("/actions/projects/queue")
 def view_queue():
     # get all the projects in the queue
+    # return them
     return 0
 
 
