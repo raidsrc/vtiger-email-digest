@@ -7,7 +7,6 @@ from fastapi.responses import HTMLResponse
 from pymongo import MongoClient
 from pymongo.database import Database
 from typing import TypedDict, Dict
-from bson import ObjectId
 
 load_dotenv()
 app = FastAPI()
@@ -70,10 +69,11 @@ class Project(TypedDict):
 
 
 class ProjectWrapperMongo(TypedDict):
+    _id: str
     project: Project
     datetime_received: str
     timezone: str
-    ObjectId: ObjectId
+    emailed_about: int
 
 
 MONGO_PASSWORD = os.getenv("MONGO_PASSWORD") or ""
@@ -111,19 +111,34 @@ def read_root():
 
 
 @app.get("/api/actions/projects/queue")
-def view_queue():
+def view_queue(emailed_about: int | None = None):
     """
-    view projects currently in queue (not sent yet)
+    view all projects currently in queue
+    if ?emailed_about=0 view all projects not emailed about yet
+    if ?emailed_about=1 view all projects emailed about once
     """
     projects: list[ProjectWrapperMongo] = []
-    projectsCursor = db_queue_collection.find()  # all projects
+    if emailed_about == 0:
+        projectsCursor = db_queue_collection.find(
+            {"emailed_about": 0}
+        )  # not emailed projects
+    elif emailed_about == 1:
+        projectsCursor = db_queue_collection.find(
+            {"emailed_about": 1}
+        )  # emailed 1x projects
+    else:
+        projectsCursor = db_queue_collection.find()  # all projects
+
     for project in projectsCursor:
+        oid = str(project["_id"])
+        project["_id"] = oid
         projects.append(project)
     projects = sorted(
         projects, key=lambda project: project["project"]["cf_project_activities"]
     )  # sort list of all projects by activities
 
-    return 0
+    
+    return projects
 
 
 @app.post("/api/actions/projects/queue")
