@@ -285,71 +285,8 @@ def trigger_email():
     projects = sorted(
         projects, key=lambda project: project["project"]["cf_project_activities"]
     )
-    new_projects = [p for p in projects if p["emailed_about"] == 0]
-    old_projects = [p for p in projects if p["emailed_about"] == 1]
-
-    table_start = "<table>"
-    table_head = """<thead><tr><th>Activities</th><th>Status</th><th>Project Name</th><th>Clone Name</th><th>Item Name</th><th>Project Number</th><th>Record URL</th></tr></thead>"""
-    table_body_start = "<tbody>"
-    table_body_end = "</tbody>"
-    table_end = "</table>"
-    rows_string = ""
-    for project in new_projects:
-        needed = {
-            "cf_project_activities": project["project"]["cf_project_activities"],
-            "projectstatus": project["project"]["projectstatus"],
-            "projectname": project["project"]["projectname"],
-            "cf_project_clonename": project["project"]["cf_project_clonename"],
-            "cf_project_aavname": project["project"]["cf_project_aavname"],
-            "project_no": project["project"]["project_no"],
-        }
-        record_url = project["project"]["url"]
-        cells_string = ""
-        for value in needed.values():
-            cell_string = f"<td>{value}</td>"
-            cells_string += cell_string
-        url_string = f"<td><a href='{record_url}'>Click here.</a></td>"
-        row_string = f"<tr>{cells_string}{url_string}</tr>"
-        rows_string += row_string
-    new_projects_table = (
-        table_start
-        + table_head
-        + table_body_start
-        + rows_string
-        + table_body_end
-        + table_end
-    )
-    rows_string = ""
-    for project in old_projects:
-        needed = {
-            "cf_project_activities": project["project"]["cf_project_activities"],
-            "projectstatus": project["project"]["projectstatus"],
-            "projectname": project["project"]["projectname"],
-            "cf_project_clonename": project["project"]["cf_project_clonename"],
-            "cf_project_aavname": project["project"]["cf_project_aavname"],
-            "project_no": project["project"]["project_no"],
-        }
-        record_url = project["project"]["url"]
-        cells_string = ""
-        for value in needed.values():
-            cell_string = f"<td>{value}</td>"
-            cells_string += cell_string
-        url_string = f"<td><a href='{record_url}'>Click here.</a></td>"
-        row_string = f"<tr>{cells_string}{url_string}</tr>"
-        rows_string += row_string
-    old_projects_table = (
-        table_start
-        + table_head
-        + table_body_start
-        + rows_string
-        + table_body_end
-        + table_end
-    )
-
-    # after constructed html with all values, update the db by incrementing emailed_about
-    query_filter = {}
-    update_operation = {"$inc": {"emailed_about": 1}}
-    db_queue_collection.update_many(query_filter, update_operation)
+    new_projects = [p["project"] for p in projects if p["emailed_about"] == 0]
+    old_projects = [p["project"] for p in projects if p["emailed_about"] == 1]    
 
     # now send a req to tell postmark to send an email and put the complete table into it
     headers = {
@@ -365,17 +302,23 @@ def trigger_email():
         "TemplateModel": {
             "today_nice": date.today().strftime("%A, %B %d, %Y"),
             "today_date": str(date.today()),
-            "new_projects_table": new_projects_table,
-            "old_projects_table": old_projects_table,
+            "new_projects": new_projects,
+            "old_projects": old_projects,
         },
     }
     data = json.dumps(data)
     r = requests.post("https://api.postmarkapp.com/email/withTemplate", headers=headers, data=data)
     rbody = r.json()
 
+    if rbody["ErrorCode"] == 0: # then email sent successfully. 
+        # after sent email, update the db by incrementing emailed_about
+        query_filter = {}
+        update_operation = {"$inc": {"emailed_about": 1}}
+        db_queue_collection.update_many(query_filter, update_operation)
+    
     return {
-        "new_projects_table": new_projects_table,
-        "old_projects_table": old_projects_table,
+        "new_projects": new_projects,
+        "old_projects": old_projects,
         "email_response": rbody,
     }
 
