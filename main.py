@@ -6,12 +6,14 @@ from dotenv import load_dotenv
 from fastapi.responses import HTMLResponse
 from pymongo import MongoClient
 from pymongo.database import Database
-from typing import TypedDict, Dict
+from typing import TypedDict, Any
+import json
 
 load_dotenv()
 app = FastAPI()
 
 
+# what's received from vtiger
 class ProjectRequestBody(BaseModel):
     contactid: str
     projectstatus: str
@@ -99,6 +101,7 @@ EMAIL_SETTINGS_BCC = os.getenv("EMAIL_SETTINGS_BCC") or ""
 
 
 @app.get("/")
+@app.get("/api")
 def read_root():
     now = datetime.now()
     now_str = str(now)
@@ -137,7 +140,6 @@ def view_queue(emailed_about: int | None = None):
         projects, key=lambda project: project["project"]["cf_project_activities"]
     )  # sort list of all projects by activities
 
-    
     return projects
 
 
@@ -146,27 +148,102 @@ async def add_project_to_queue(project: ProjectRequestBody):
     """
     add a project to the projects queue.
     """
-    # when post req received, break down the body into all the pieces and assign to vars
+    # when post req received, first validate it
+    # break down the body into all the pieces and assign to vars
     # write to db with datetime received
     # return that the data has been written to db successfully
 
     now = datetime.now()
-    data: Dict[str, str | ProjectRequestBody] = {
-        "project": project,
+    document_to_insert = {
         "datetime_received": str(now),
         "timezone": str(now.astimezone().tzname()),
+        "emailed_about": 0,
+        "project": {
+            "contactid": project.contactid,
+            "projectstatus": project.projectstatus,
+            "cf_project_activities": project.cf_project_activities,
+            "projectname": project.projectname,
+            "linktoaccountscontacts": project.linktoaccountscontacts,
+            "cf_project_clonename": project.cf_project_clonename,
+            "cf_project_lotnumber": project.cf_project_lotnumber,
+            "project_no": project.project_no,
+            "cf_project_laststatuschange": project.cf_project_laststatuschange,
+            "cf_project_relatedorganization": project.cf_project_relatedorganization,
+            "cf_project_usecustomerbuffer": project.cf_project_usecustomerbuffer,
+            "cf_project_projectnotesfromquote": project.cf_project_projectnotesfromquote,
+            "cf_project_quotenumber": project.cf_project_quotenumber,
+            "cf_project_goisize": project.cf_project_goisize,
+            "description": project.description,
+            "cf_project_aavname": project.cf_project_aavname,
+            "cf_project_aavserotype": project.cf_project_aavserotype,
+            "cf_project_productionscale": project.cf_project_productionscale,
+            "cf_project_concentrationrequirement": project.cf_project_concentrationrequirement,
+            "cf_project_buffer": project.cf_project_buffer,
+            "cf_project_deliveryvolume": project.cf_project_deliveryvolume,
+            "createdtime": project.createdtime,
+            "modifiedtime": project.modifiedtime,
+            "id": project.id,
+            "url": project.url,
+        },
     }
-    return data
+    db_queue_collection.insert_one(document_to_insert)  # type: ignore
+    document_to_insert["_id"] = str(document_to_insert["_id"])
+    response = {
+        "success": True,
+        "document_added_to_database": document_to_insert,
+    }
+    return response
 
 
 @app.delete("/api/actions/projects/queue")
-def clear_queue():
+def clear_queue(emailed_about: int | None = None, all: bool = False):
     """
-    clear the queue.
+    remove projects from queue. this means moving projects from projectQueue into projectQueueTrash.
+    default behavior is to clear of only the projects where emailed_about == 1.
     """
-    # copy all entries in projectQueue into projectQueueTrash
-    # delete all entries in projectQueue
-    return 0
+    projects: list[ProjectWrapperMongo] = []
+    if all == True:
+        projectsCursor = db_queue_collection.find()  # all projects
+    else:
+        if emailed_about == 0:
+            projectsCursor = db_queue_collection.find(
+                {"emailed_about": 0}
+            )  # not emailed projects
+        else:
+            projectsCursor = db_queue_collection.find(
+                {"emailed_about": 1}
+            )  # emailed 1x projects
+
+    for project in projectsCursor:
+        oid = str(project["_id"])
+        project["_id"] = oid
+        projects.append(project)
+    projects = sorted(
+        projects, key=lambda project: project["project"]["cf_project_activities"]
+    )
+    # now projects is list of all chosen projects sorted by activity
+    if all == True:
+        query_filter = {}
+        db_queue_collection.delete_many(query_filter)
+    else:
+        if emailed_about == 0:
+            query_filter = {"emailed_about": 0}
+            db_queue_collection.delete_many(query_filter)
+        else:
+            query_filter = {"emailed_about": 1}
+            db_queue_collection.delete_many(query_filter)
+
+    # deletion finished, now to insert into trash collection
+    db_trash_collection.insert_many(projects)
+
+    # before returning gotta change ObjectId to string so fastapi doesn't complain
+    for project in projects:
+        project["_id"] = str(project["_id"])
+    response = {
+        "success": True,
+        "documents_trashed": projects,
+    }
+    return response
 
 
 # i will manually delete the projectQueueTrash when I feel like it.
@@ -187,7 +264,7 @@ def view_email_settings():
 @app.post("/api/actions/projects/email", response_class=HTMLResponse)
 def trigger_email():
     """
-    trigger an email to be sent.
+    trigger an email to be sent. returns an html table with a header, rows corresponding to projects, and columns corresponding to important project fields.
     """
     # gather all the projects in the queue into a list
     # sort the list by activities
