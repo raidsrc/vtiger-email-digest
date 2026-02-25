@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from fastapi.responses import HTMLResponse
 from pymongo import MongoClient
 from pymongo.database import Database
-from typing import TypedDict
+from typing import TypedDict, Dict
 
 load_dotenv()
 app = FastAPI()
@@ -70,7 +70,7 @@ class Project(TypedDict):
 
 MONGO_PASSWORD = os.getenv("MONGO_PASSWORD")
 uri = f"mongodb+srv://admin:{MONGO_PASSWORD}@cluster0.ps7aafk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-client: MongoClient = MongoClient(uri)
+client: MongoClient[Project] = MongoClient(uri)
 db: Database[Project] = client["vtigerEmailDigestDatabase"]
 QUEUE_COLLECTION = os.getenv("QUEUE_COLLECTION") or ""
 TRASH_COLLECTION = os.getenv("TRASH_COLLECTION") or ""
@@ -100,19 +100,11 @@ def view_queue():
 @app.post("/actions/projects/queue")
 async def add_project_to_queue(project: ProjectRequestBody):
     # when post req received, break down the body into all the pieces and assign to vars
-    # write to db like so:
-    """
-    {
-        "project_no": "PROJ2873",
-        "other_thing": "abcdef",
-        ...
-        "datetime_received": "20260224whatever",
-    }
-    """
+    # write to db with datetime received
     # return that the data has been written to db successfully
 
     now = datetime.now()
-    data = {
+    data: Dict[str, str | ProjectRequestBody] = {
         "project": project,
         "datetime_received": str(now),
         "timezone": str(now.astimezone().tzname()),
