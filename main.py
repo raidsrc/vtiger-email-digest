@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from datetime import datetime
+from datetime import datetime, date
 from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse
 from pymongo import MongoClient
 from pymongo.database import Database
 from typing import TypedDict, Any
+import requests
 import json
 
 load_dotenv()
@@ -97,6 +98,7 @@ db_trash_collection = db[TRASH_COLLECTION]
 EMAIL_SETTINGS_RECIPIENTS = os.getenv("EMAIL_SETTINGS_RECIPIENTS") or ""
 EMAIL_SETTINGS_CC = os.getenv("EMAIL_SETTINGS_CC") or ""
 EMAIL_SETTINGS_BCC = os.getenv("EMAIL_SETTINGS_BCC") or ""
+POSTMARK_SERVER_TOKEN = os.getenv("POSTMARK_SERVER_TOKEN") or ""
 # not checking if these ones are empty string or not because they should be allowed to be empty string
 
 
@@ -222,6 +224,16 @@ def clear_queue(emailed_about: int | None = None, all: bool = False):
         projects, key=lambda project: project["project"]["cf_project_activities"]
     )
     # now projects is list of all chosen projects sorted by activity
+
+    # if no projects, don't do anything
+    if len(projects) == 0:
+        response = {
+            "success": True,
+            "documents_trashed": [],
+        }
+        return response
+
+    # otherwise, delete stuff
     if all == True:
         query_filter = {}
         db_queue_collection.delete_many(query_filter)
@@ -261,26 +273,28 @@ def view_email_settings():
     }
 
 
-@app.post("/api/actions/projects/email", response_class=HTMLResponse)
+@app.post("/api/actions/projects/email")
 def trigger_email():
     """
-    trigger an email to be sent. returns an html table with a header, rows corresponding to projects, and columns corresponding to important project fields.
+    trigger an email to be sent. returns an html table with a header, rows corresponding to projects, and columns corresponding to important project fields. separate tables for emailed_about == 0 and == 1. also increments all documents' emailed_about by 1.
     """
-    # gather all the projects in the queue into a list
-    # sort the list by activities
-    # loop through the list
-    # for every project, construct an html string
-
     projects: list[ProjectWrapperMongo] = []
-    projectsCursor = db_queue_collection.find()  # all projects
+    projectsCursor = db_queue_collection.find()
     for project in projectsCursor:
         projects.append(project)
     projects = sorted(
         projects, key=lambda project: project["project"]["cf_project_activities"]
-    )  # sort list of all projects by activities
+    )
+    new_projects = [p for p in projects if p["emailed_about"] == 0]
+    old_projects = [p for p in projects if p["emailed_about"] == 1]
 
+    table_start = "<table>"
+    table_head = """<thead><tr><th>Activities</th><th>Status</th><th>Project Name</th><th>Clone Name</th><th>Item Name</th><th>Project Number</th><th>Record URL</th></tr></thead>"""
+    table_body_start = "<tbody>"
+    table_body_end = "</tbody>"
+    table_end = "</table>"
     rows_string = ""
-    for project in projects:
+    for project in new_projects:
         needed = {
             "cf_project_activities": project["project"]["cf_project_activities"],
             "projectstatus": project["project"]["projectstatus"],
@@ -297,23 +311,73 @@ def trigger_email():
         url_string = f"<td><a href='{record_url}'>Click here.</a></td>"
         row_string = f"<tr>{cells_string}{url_string}</tr>"
         rows_string += row_string
+    new_projects_table = (
+        table_start
+        + table_head
+        + table_body_start
+        + rows_string
+        + table_body_end
+        + table_end
+    )
+    rows_string = ""
+    for project in old_projects:
+        needed = {
+            "cf_project_activities": project["project"]["cf_project_activities"],
+            "projectstatus": project["project"]["projectstatus"],
+            "projectname": project["project"]["projectname"],
+            "cf_project_clonename": project["project"]["cf_project_clonename"],
+            "cf_project_aavname": project["project"]["cf_project_aavname"],
+            "project_no": project["project"]["project_no"],
+        }
+        record_url = project["project"]["url"]
+        cells_string = ""
+        for value in needed.values():
+            cell_string = f"<td>{value}</td>"
+            cells_string += cell_string
+        url_string = f"<td><a href='{record_url}'>Click here.</a></td>"
+        row_string = f"<tr>{cells_string}{url_string}</tr>"
+        rows_string += row_string
+    old_projects_table = (
+        table_start
+        + table_head
+        + table_body_start
+        + rows_string
+        + table_body_end
+        + table_end
+    )
 
-    tableStart = "<table><tbody>"
-    tableHead = """<thead>
-    <tr>
-    <th>Activities</th>
-    <th>Status</th>
-    <th>Project Name</th>
-    <th>Clone Name</th>
-    <th>Item Name</th>
-    <th>Project Number</th>
-    <th>Record URL</th>
-    </tr>
-    </thead>
-    """
-    tableEnd = "</tbody></table>"
+    # after constructed html with all values, update the db by incrementing emailed_about
+    query_filter = {}
+    update_operation = {"$inc": {"emailed_about": 1}}
+    db_queue_collection.update_many(query_filter, update_operation)
 
-    return tableStart + tableHead + rows_string + tableEnd
+    # now send a req to tell postmark to send an email and put the complete table into it
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "X-Postmark-Server-Token": f"{POSTMARK_SERVER_TOKEN}",
+    }
+    data = {
+        "From": "noreply@virovek.com",
+        "To": "ray.chen@virovek.com",
+        "MessageStream": "broadcast",
+        "TemplateAlias": "digest-template-1",
+        "TemplateModel": {
+            "today_nice": date.today().strftime("%A, %B %d, %Y"),
+            "today_date": str(date.today()),
+            "new_projects_table": new_projects_table,
+            "old_projects_table": old_projects_table,
+        },
+    }
+    data = json.dumps(data)
+    r = requests.post("https://api.postmarkapp.com/email/withTemplate", headers=headers, data=data)
+    rbody = r.json()
+
+    return {
+        "new_projects_table": new_projects_table,
+        "old_projects_table": old_projects_table,
+        "email_response": rbody,
+    }
 
 
 # todo: set a cron job to run at start of work day on mondays, wednesdays, and fridays. send a post to trigger an email to be sent. after that, send delete req to flush queue.
