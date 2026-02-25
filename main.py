@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse
 from pymongo import MongoClient
 from pymongo.database import Database
 from typing import TypedDict, Dict
+from bson import ObjectId
 
 load_dotenv()
 app = FastAPI()
@@ -68,37 +69,68 @@ class Project(TypedDict):
     url: str
 
 
-MONGO_PASSWORD = os.getenv("MONGO_PASSWORD")
-uri = f"mongodb+srv://admin:{MONGO_PASSWORD}@cluster0.ps7aafk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-client: MongoClient[Project] = MongoClient(uri)
-db: Database[Project] = client["vtigerEmailDigestDatabase"]
+class ProjectWrapperMongo(TypedDict):
+    project: Project
+    datetime_received: str
+    timezone: str
+    ObjectId: ObjectId
+
+
+MONGO_PASSWORD = os.getenv("MONGO_PASSWORD") or ""
 QUEUE_COLLECTION = os.getenv("QUEUE_COLLECTION") or ""
 TRASH_COLLECTION = os.getenv("TRASH_COLLECTION") or ""
+if MONGO_PASSWORD == "":
+    raise Exception("MONGO_PASSWORD missing")
+if QUEUE_COLLECTION == "":
+    raise Exception("QUEUE_COLLECTION missing")
+if TRASH_COLLECTION == "":
+    raise Exception("TRASH_COLLECTION missing")
+
+uri = f"mongodb+srv://admin:{MONGO_PASSWORD}@cluster0.ps7aafk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+client: MongoClient[ProjectWrapperMongo] = MongoClient(uri)
+db: Database[ProjectWrapperMongo] = client["vtigerEmailDigestDatabase"]
 db_queue_collection = db[QUEUE_COLLECTION]
 db_trash_collection = db[TRASH_COLLECTION]
 
-EMAIL_SETTINGS_RECIPIENTS = os.getenv("EMAIL_SETTINGS_RECIPIENTS")
-EMAIL_SETTINGS_CC = os.getenv("EMAIL_SETTINGS_CC")
-EMAIL_SETTINGS_BCC = os.getenv("EMAIL_SETTINGS_BCC")
+EMAIL_SETTINGS_RECIPIENTS = os.getenv("EMAIL_SETTINGS_RECIPIENTS") or ""
+EMAIL_SETTINGS_CC = os.getenv("EMAIL_SETTINGS_CC") or ""
+EMAIL_SETTINGS_BCC = os.getenv("EMAIL_SETTINGS_BCC") or ""
+# not checking if these ones are empty string or not because they should be allowed to be empty string
 
 
 @app.get("/")
 def read_root():
-    now_str = str(datetime.now())
-    return {"name": "vtiger-email-digest", "date": now_str, "hello": "world"}
+    now = datetime.now()
+    now_str = str(now)
+    return {
+        "name": "vtiger-email-digest",
+        "date": now_str,
+        "timezone": str(now.astimezone().tzname()),
+        "hello": "world",
+    }
 
 
-# view projects currently in queue (not sent yet)
-@app.get("/actions/projects/queue")
+@app.get("/api/actions/projects/queue")
 def view_queue():
-    # get all the projects in the queue
-    # return them
+    """
+    view projects currently in queue (not sent yet)
+    """
+    projects: list[ProjectWrapperMongo] = []
+    projectsCursor = db_queue_collection.find()  # all projects
+    for project in projectsCursor:
+        projects.append(project)
+    projects = sorted(
+        projects, key=lambda project: project["project"]["cf_project_activities"]
+    )  # sort list of all projects by activities
+
     return 0
 
 
-# add a project to the projects queue.
-@app.post("/actions/projects/queue")
+@app.post("/api/actions/projects/queue")
 async def add_project_to_queue(project: ProjectRequestBody):
+    """
+    add a project to the projects queue.
+    """
     # when post req received, break down the body into all the pieces and assign to vars
     # write to db with datetime received
     # return that the data has been written to db successfully
@@ -112,9 +144,11 @@ async def add_project_to_queue(project: ProjectRequestBody):
     return data
 
 
-# clear the queue.
-@app.delete("/actions/projects/queue")
+@app.delete("/api/actions/projects/queue")
 def clear_queue():
+    """
+    clear the queue.
+    """
     # copy all entries in projectQueue into projectQueueTrash
     # delete all entries in projectQueue
     return 0
@@ -123,9 +157,11 @@ def clear_queue():
 # i will manually delete the projectQueueTrash when I feel like it.
 
 
-# view current email settings.
-@app.get("/actions/projects/email")
+@app.get("/api/actions/projects/email")
 def view_email_settings():
+    """
+    view current email settings.
+    """
     return {
         "EMAIL_SETTINGS_RECIPIENTS": EMAIL_SETTINGS_RECIPIENTS,
         "EMAIL_SETTINGS_CC": EMAIL_SETTINGS_CC,
@@ -133,37 +169,35 @@ def view_email_settings():
     }
 
 
-# trigger an email to be sent.
-@app.post("/actions/projects/email", response_class=HTMLResponse)
+@app.post("/api/actions/projects/email", response_class=HTMLResponse)
 def trigger_email():
+    """
+    trigger an email to be sent.
+    """
     # gather all the projects in the queue into a list
     # sort the list by activities
     # loop through the list
     # for every project, construct an html string
 
-    projects: list[Project] = []
-
-    # # for now, just practicing getting it working. i'm using a local file to test.
-    # with open("./many-projects-sample.json") as file:
-    #     content = file.read()
-    #     projects = json.loads(content)
-
-    projectsCursor = db_queue_collection.find()
+    projects: list[ProjectWrapperMongo] = []
+    projectsCursor = db_queue_collection.find()  # all projects
     for project in projectsCursor:
         projects.append(project)
-    projects = sorted(projects, key=lambda project: project["cf_project_activities"])
+    projects = sorted(
+        projects, key=lambda project: project["project"]["cf_project_activities"]
+    )  # sort list of all projects by activities
 
     rows_string = ""
     for project in projects:
         needed = {
-            "cf_project_activities": project["cf_project_activities"],
-            "projectstatus": project["projectstatus"],
-            "projectname": project["projectname"],
-            "cf_project_clonename": project["cf_project_clonename"],
-            "cf_project_aavname": project["cf_project_aavname"],
-            "project_no": project["project_no"],
+            "cf_project_activities": project["project"]["cf_project_activities"],
+            "projectstatus": project["project"]["projectstatus"],
+            "projectname": project["project"]["projectname"],
+            "cf_project_clonename": project["project"]["cf_project_clonename"],
+            "cf_project_aavname": project["project"]["cf_project_aavname"],
+            "project_no": project["project"]["project_no"],
         }
-        record_url = project["url"]
+        record_url = project["project"]["url"]
         cells_string = ""
         for value in needed.values():
             cell_string = f"<td>{value}</td>"
