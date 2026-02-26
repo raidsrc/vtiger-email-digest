@@ -7,41 +7,24 @@ class ProjectRequestBody(BaseModel):
     projectstatus: str
     cf_project_activities: str
     projectname: str
-    cf_project_clonename: str
-    cf_project_lotnumber: str
+    cf_project_clonename: str | None
+    cf_project_lotnumber: str | None
     project_no: str
-    cf_project_quotenumber: str
-    description: str
-    cf_project_aavname: str
-
-
-class VtigerWebhookBodyWebRequest(BaseModel):
-    url: str
-    method: str
-    type: str
-    project_json_string: str = Field(alias='json')
-    headers: dict[str, str]
-    recordid: str
-    modulename: str
-
-
-# what's received from vtiger that wraps around the project request body received from vtiger
-class VtigerWebhookBody(BaseModel):
-    notifyurl: str
-    webrequest: VtigerWebhookBodyWebRequest
-    siteurl: str
+    cf_project_quotenumber: str | None
+    description: str | None
+    cf_project_aavname: str | None
 
 
 class Project(TypedDict):
     projectstatus: str
     cf_project_activities: str
     projectname: str
-    cf_project_clonename: str
-    cf_project_lotnumber: str
+    cf_project_clonename: str | None
+    cf_project_lotnumber: str | None
     project_no: str
-    cf_project_quotenumber: str
-    description: str
-    cf_project_aavname: str
+    cf_project_quotenumber: str | None
+    description: str | None
+    cf_project_aavname: str | None
 
 
 class ProjectWrapperMongo(TypedDict):

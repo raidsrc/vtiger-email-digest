@@ -12,7 +12,6 @@ from class_types import (
     Project,
     ProjectRequestBody,
     ProjectWrapperMongo,
-    VtigerWebhookBody,
 )
 
 
