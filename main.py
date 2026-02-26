@@ -72,11 +72,11 @@ class Project(TypedDict):
 
 
 class ProjectWrapperMongo(TypedDict):
-    _id: str
-    project: Project
+    _id: str # in the db it's an ObjectId. make sure to convert this to a string before returning in fastapi.
+    project: Project 
     datetime_received: str
     timezone: str
-    emailed_about: int
+    emailed_about: int # if a project is included in a digest email, this counter increments.
 
 
 MONGO_PASSWORD = os.getenv("MONGO_PASSWORD") or ""
@@ -278,6 +278,7 @@ def trigger_email():
     """
     trigger an email to be sent. returns an html table with a header, rows corresponding to projects, and columns corresponding to important project fields. separate tables for emailed_about == 0 and == 1. also increments all documents' emailed_about by 1.
     """
+    # get projects
     projects: list[ProjectWrapperMongo] = []
     projectsCursor = db_queue_collection.find()
     for project in projectsCursor:
@@ -288,7 +289,7 @@ def trigger_email():
     new_projects = [p["project"] for p in projects if p["emailed_about"] == 0]
     old_projects = [p["project"] for p in projects if p["emailed_about"] == 1]    
 
-    # now send a req to tell postmark to send an email and put the complete table into it
+    # now send a req to tell postmark to send an email
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
@@ -310,8 +311,8 @@ def trigger_email():
     r = requests.post("https://api.postmarkapp.com/email/withTemplate", headers=headers, data=data)
     rbody = r.json()
 
-    if rbody["ErrorCode"] == 0: # then email sent successfully. 
-        # after sent email, update the db by incrementing emailed_about
+    # if email sent successfully then increment emailed_about for all projects
+    if rbody["ErrorCode"] == 0: 
         query_filter = {}
         update_operation = {"$inc": {"emailed_about": 1}}
         db_queue_collection.update_many(query_filter, update_operation)
