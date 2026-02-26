@@ -4,27 +4,27 @@ from pydantic import BaseModel, Field
 
 # what's received from vtiger
 class ProjectRequestBody(BaseModel):
-    projectstatus: str
-    cf_project_activities: str
-    projectname: str
-    cf_project_clonename: str | None
-    cf_project_lotnumber: str | None
-    project_no: str
-    cf_project_quotenumber: str | None
-    description: str | None
-    cf_project_aavname: str | None
+    projectstatus: str = ""
+    cf_project_activities: str = ""
+    projectname: str = ""
+    cf_project_clonename: str = ""
+    cf_project_lotnumber: str = ""
+    project_no: str = ""
+    cf_project_quotenumber: str = ""
+    description: str = ""
+    cf_project_aavname: str = ""
 
 
 class Project(TypedDict):
     projectstatus: str
     cf_project_activities: str
     projectname: str
-    cf_project_clonename: str | None
-    cf_project_lotnumber: str | None
+    cf_project_clonename: str
+    cf_project_lotnumber: str
     project_no: str
-    cf_project_quotenumber: str | None
-    description: str | None
-    cf_project_aavname: str | None
+    cf_project_quotenumber: str
+    description: str
+    cf_project_aavname: str
 
 
 class ProjectWrapperMongo(TypedDict):
