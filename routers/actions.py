@@ -1,4 +1,6 @@
-from fastapi import Depends, APIRouter
+from typing import Annotated
+
+from fastapi import Depends, APIRouter, Body
 from datetime import datetime, date
 import os
 from pymongo import MongoClient
@@ -73,7 +75,7 @@ def view_queue(
 
 
 @actions_router.post("/projects/queue")
-async def add_project_to_queue(project: ProjectRequestBody):
+async def add_project_to_queue(project_json_string: Annotated[str, Body()]):
     """
     add a project to the projects queue.
     """
@@ -82,21 +84,22 @@ async def add_project_to_queue(project: ProjectRequestBody):
     # write to db with datetime received
     # return that the data has been written to db successfully
 
+    project: Project = json.loads(project_json_string)
     now = datetime.now()
     document_to_insert = {
         "datetime_received": str(now),
         "timezone": str(now.astimezone().tzname()),
         "emailed_about": 0,
         "project": {
-            "projectstatus": project.projectstatus or "",
-            "cf_project_activities": project.cf_project_activities or "",
-            "projectname": project.projectname or "",
-            "cf_project_clonename": project.cf_project_clonename or "",
-            "cf_project_lotnumber": project.cf_project_lotnumber or "",
-            "project_no": project.project_no or "",
-            "cf_project_quotenumber": project.cf_project_quotenumber or "",
-            "description": project.description or "",
-            "cf_project_aavname": project.cf_project_aavname or "",
+            "projectstatus": project.get("projectstatus", ""),
+            "cf_project_activities": project.get("cf_project_activities", ""),
+            "projectname": project.get("projectname", ""),
+            "cf_project_clonename": project.get("cf_project_clonename", ""),
+            "cf_project_lotnumber": project.get("cf_project_lotnumber", ""),
+            "project_no": project.get("project_no", ""),
+            "cf_project_quotenumber": project.get("cf_project_quotenumber", ""),
+            "description": project.get("description", ""),
+            "cf_project_aavname": project.get("cf_project_aavname", ""),
         },
     }
     db_queue_collection.insert_one(document_to_insert)  # type: ignore
