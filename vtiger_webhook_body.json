@@ -1,0 +1,15 @@
+{
+  "notifyurl": "https:\/\/virovek.od2.vtiger.com\/shorturl.php?id=699feb4175b757.68697129",
+  "webrequest": {
+    "url": "https:\/\/vtiger-email-digest-production.up.railway.app\/api\/actions\/projects\/queue",
+    "method": "POST",
+    "type": "JSON",
+    "json": "{\"projectstatus\":\"Started\",\"cf_project_activities\":\"CLONING\",\"projectname\":\"Test Project?\",\"cf_project_clonename\":\"RAY02\",\"cf_project_lotnumber\":\"\",\"project_no\":\"PROJ7413\",\"description\":\"\",\"cf_project_aavname\":\"\"}",
+    "headers": {
+      "Authorization": "Basic dmlyb3Zlazo1VnBhZkNLUEFuS1pSWHVNY05oUHhBWGoyYWFNaHdtWg=="
+    },
+    "recordid": "422660",
+    "modulename": "Project"
+  },
+  "siteurl": "https:\/\/virovek.od2.vtiger.com"
+}

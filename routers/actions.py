@@ -1,14 +1,17 @@
 from fastapi import Depends, APIRouter
 from datetime import datetime, date
-from pydantic import BaseModel
 import os
 from pymongo import MongoClient
 from pymongo.database import Database
-from typing import TypedDict
 import requests
 import json
 from deps import get_current_username
-from class_types import Project, ProjectRequestBody, ProjectWrapperMongo
+from class_types import (
+    Project,
+    ProjectRequestBody,
+    ProjectWrapperMongo,
+    VtigerWebhookBody,
+)
 
 
 MONGO_PASSWORD = os.getenv("MONGO_PASSWORD") or ""
@@ -70,7 +73,7 @@ def view_queue(
 
 
 @actions_router.post("/projects/queue")
-async def add_project_to_queue(project: ProjectRequestBody):
+async def add_project_to_queue(webhook_body: VtigerWebhookBody):
     """
     add a project to the projects queue.
     """
@@ -79,37 +82,22 @@ async def add_project_to_queue(project: ProjectRequestBody):
     # write to db with datetime received
     # return that the data has been written to db successfully
 
+    project: Project = json.loads(webhook_body.webrequest.project_json_string)
     now = datetime.now()
     document_to_insert = {
         "datetime_received": str(now),
         "timezone": str(now.astimezone().tzname()),
         "emailed_about": 0,
         "project": {
-            "contactid": project.contactid,
-            "projectstatus": project.projectstatus,
-            "cf_project_activities": project.cf_project_activities,
-            "projectname": project.projectname,
-            "linktoaccountscontacts": project.linktoaccountscontacts,
-            "cf_project_clonename": project.cf_project_clonename,
-            "cf_project_lotnumber": project.cf_project_lotnumber,
-            "project_no": project.project_no,
-            "cf_project_laststatuschange": project.cf_project_laststatuschange,
-            "cf_project_relatedorganization": project.cf_project_relatedorganization,
-            "cf_project_usecustomerbuffer": project.cf_project_usecustomerbuffer,
-            "cf_project_projectnotesfromquote": project.cf_project_projectnotesfromquote,
-            "cf_project_quotenumber": project.cf_project_quotenumber,
-            "cf_project_goisize": project.cf_project_goisize,
-            "description": project.description,
-            "cf_project_aavname": project.cf_project_aavname,
-            "cf_project_aavserotype": project.cf_project_aavserotype,
-            "cf_project_productionscale": project.cf_project_productionscale,
-            "cf_project_concentrationrequirement": project.cf_project_concentrationrequirement,
-            "cf_project_buffer": project.cf_project_buffer,
-            "cf_project_deliveryvolume": project.cf_project_deliveryvolume,
-            "createdtime": project.createdtime,
-            "modifiedtime": project.modifiedtime,
-            "id": project.id,
-            "url": project.url,
+            "projectstatus": project.get("projectstatus", ""),
+            "cf_project_activities": project.get("cf_project_activities", ""),
+            "projectname": project.get("projectname", ""),
+            "cf_project_clonename": project.get("cf_project_clonename", ""),
+            "cf_project_lotnumber": project.get("cf_project_lotnumber", ""),
+            "project_no": project.get("project_no", ""),
+            "cf_project_quotenumber": project.get("cf_project_quotenumber", ""),
+            "description": project.get("description", ""),
+            "cf_project_aavname": project.get("cf_project_aavname", ""),
         },
     }
     db_queue_collection.insert_one(document_to_insert)  # type: ignore
