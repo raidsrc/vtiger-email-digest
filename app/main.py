@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from datetime import datetime
 from dotenv import load_dotenv
 from fastapi.security import HTTPBasic
-from routers import actions
+from app.routers import actions
 
 load_dotenv()
 app = FastAPI()

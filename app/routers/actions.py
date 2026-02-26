@@ -1,5 +1,3 @@
-from typing import Annotated
-
 from fastapi import Depends, APIRouter, Body
 from datetime import datetime, date
 import os
@@ -7,9 +5,8 @@ from pymongo import MongoClient
 from pymongo.database import Database
 import requests
 import json
-from deps import get_current_username
-from class_types import (
-    Project,
+from app.deps import get_current_username
+from app.class_types import (
     ProjectRequestBody,
     ProjectWrapperMongo,
 )
