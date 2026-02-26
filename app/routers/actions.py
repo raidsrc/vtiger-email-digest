@@ -110,7 +110,7 @@ async def add_project_to_queue(project: ProjectRequestBody):
 def clear_queue(emailed_about: int | None = None, all: bool = False):
     """
     remove projects from queue. this means moving projects from projectQueue into projectQueueTrash.
-    default behavior is to clear of only the projects where emailed_about == 1.
+    default behavior is to clear only the projects where emailed_about == 2.
     """
     projects: list[ProjectWrapperMongo] = []
     if all == True:
@@ -119,11 +119,15 @@ def clear_queue(emailed_about: int | None = None, all: bool = False):
         if emailed_about == 0:
             projectsCursor = db_queue_collection.find(
                 {"emailed_about": 0}
-            )  # not emailed projects
-        else:
+            )  # just arrived, not emailed projects
+        elif emailed_about == 1:
             projectsCursor = db_queue_collection.find(
                 {"emailed_about": 1}
             )  # emailed 1x projects
+        else:
+            projectsCursor = db_queue_collection.find(
+                {"emailed_about": 2}
+            )  # emailed 2x projects
 
     for project in projectsCursor:
         oid = str(project["_id"])
@@ -150,8 +154,11 @@ def clear_queue(emailed_about: int | None = None, all: bool = False):
         if emailed_about == 0:
             query_filter = {"emailed_about": 0}
             db_queue_collection.delete_many(query_filter)
-        else:
+        elif emailed_about == 1:
             query_filter = {"emailed_about": 1}
+            db_queue_collection.delete_many(query_filter)
+        else:
+            query_filter = {"emailed_about": 2}
             db_queue_collection.delete_many(query_filter)
 
     # deletion finished, now to insert into trash collection
