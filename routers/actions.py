@@ -217,7 +217,9 @@ def trigger_email():
             "today_nice": date.today().strftime("%A, %B %d, %Y"),
             "today_date": str(date.today()),
             "new_projects": new_projects,
+            "new_projects_count": len(new_projects),
             "old_projects": old_projects,
+            "old_projects_count": len(old_projects),
         },
     }
     data = json.dumps(data)
