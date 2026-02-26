@@ -1,8 +1,8 @@
-# what's received from vtiger
 from typing import TypedDict
 from pydantic import BaseModel
 
 
+# what's received from vtiger
 class ProjectRequestBody(BaseModel):
     contactid: str
     projectstatus: str

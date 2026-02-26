@@ -1,10 +1,19 @@
 import secrets
 from typing import Annotated
+import os
+from dotenv import load_dotenv
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
+load_dotenv()
 security = HTTPBasic()
+
+BASIC_AUTH_USER = os.getenv("BASIC_AUTH_USER") or ""
+BASIC_AUTH_PASS = os.getenv("BASIC_AUTH_PASS") or ""
+if BASIC_AUTH_USER == "" or BASIC_AUTH_PASS == "":
+    raise Exception("basic auth credential(s) are missing.")
+
 
 def get_current_username(
     credentials: Annotated[HTTPBasicCredentials, Depends(security)],

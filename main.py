@@ -1,15 +1,7 @@
-from fastapi import Depends, FastAPI, HTTPException, Request, status, APIRouter
-from datetime import datetime, date
-from pydantic import BaseModel
-import os
+from fastapi import FastAPI
+from datetime import datetime
 from dotenv import load_dotenv
-from fastapi.responses import HTMLResponse
-from pymongo import MongoClient
-from pymongo.database import Database
-from typing import Annotated, TypedDict, Any
-import requests
-import json
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.security import HTTPBasic
 from routers import actions
 
 load_dotenv()
