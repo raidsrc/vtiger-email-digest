@@ -297,7 +297,8 @@ def trigger_email():
     }
     data = {
         "From": "noreply@virovek.com",
-        "To": "ray.chen@virovek.com",
+        "To": EMAIL_SETTINGS_RECIPIENTS,
+        "Cc": EMAIL_SETTINGS_CC,
         "MessageStream": "broadcast",
         "TemplateAlias": "digest-template-1",
         "TemplateModel": {
