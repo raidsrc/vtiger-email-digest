@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+import secrets
+
+from fastapi import Depends, FastAPI, HTTPException, status
 from datetime import datetime, date
 from pydantic import BaseModel
 import os
@@ -6,12 +8,14 @@ from dotenv import load_dotenv
 from fastapi.responses import HTMLResponse
 from pymongo import MongoClient
 from pymongo.database import Database
-from typing import TypedDict, Any
+from typing import Annotated, TypedDict, Any
 import requests
 import json
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 load_dotenv()
 app = FastAPI()
+security = HTTPBasic()
 
 
 # what's received from vtiger
@@ -72,11 +76,13 @@ class Project(TypedDict):
 
 
 class ProjectWrapperMongo(TypedDict):
-    _id: str # in the db it's an ObjectId. make sure to convert this to a string before returning in fastapi.
-    project: Project 
+    _id: str  # in the db it's an ObjectId. make sure to convert this to a string before returning in fastapi.
+    project: Project
     datetime_received: str
     timezone: str
-    emailed_about: int # if a project is included in a digest email, this counter increments.
+    emailed_about: (
+        int  # if a project is included in a digest email, this counter increments.
+    )
 
 
 MONGO_PASSWORD = os.getenv("MONGO_PASSWORD") or ""
@@ -102,6 +108,29 @@ POSTMARK_SERVER_TOKEN = os.getenv("POSTMARK_SERVER_TOKEN") or ""
 # not checking if these ones are empty string or not because they should be allowed to be empty string
 
 
+# security functions
+def get_current_username(
+    credentials: Annotated[HTTPBasicCredentials, Depends(security)],
+):
+    current_username_bytes = credentials.username.encode("utf8")
+    correct_username_bytes = b"virovek"
+    is_correct_username = secrets.compare_digest(
+        current_username_bytes, correct_username_bytes
+    )
+    current_password_bytes = credentials.password.encode("utf8")
+    correct_password_bytes = b"5VpafCKPAnKZRXuMcNhPxAXj2aaMhwmZ"
+    is_correct_password = secrets.compare_digest(
+        current_password_bytes, correct_password_bytes
+    )
+    if not (is_correct_username and is_correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
+
 @app.get("/")
 @app.get("/api")
 def read_root():
@@ -113,6 +142,11 @@ def read_root():
         "timezone": str(now.astimezone().tzname()),
         "hello": "world",
     }
+
+
+@app.get("/protected")
+def yo(username: Annotated[str, Depends(get_current_username)]):
+    return {"username": username}
 
 
 @app.get("/api/actions/projects/queue")
@@ -287,7 +321,7 @@ def trigger_email():
         projects, key=lambda project: project["project"]["cf_project_activities"]
     )
     new_projects = [p["project"] for p in projects if p["emailed_about"] == 0]
-    old_projects = [p["project"] for p in projects if p["emailed_about"] == 1]    
+    old_projects = [p["project"] for p in projects if p["emailed_about"] == 1]
 
     # now send a req to tell postmark to send an email
     headers = {
@@ -309,15 +343,17 @@ def trigger_email():
         },
     }
     data = json.dumps(data)
-    r = requests.post("https://api.postmarkapp.com/email/withTemplate", headers=headers, data=data)
+    r = requests.post(
+        "https://api.postmarkapp.com/email/withTemplate", headers=headers, data=data
+    )
     rbody = r.json()
 
     # if email sent successfully then increment emailed_about for all projects
-    if rbody["ErrorCode"] == 0: 
+    if rbody["ErrorCode"] == 0:
         query_filter = {}
         update_operation = {"$inc": {"emailed_about": 1}}
         db_queue_collection.update_many(query_filter, update_operation)
-    
+
     return {
         "new_projects": new_projects,
         "old_projects": old_projects,
