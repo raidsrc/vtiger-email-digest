@@ -1,6 +1,6 @@
 import secrets
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from datetime import datetime, date
 from pydantic import BaseModel
 import os
@@ -108,7 +108,6 @@ POSTMARK_SERVER_TOKEN = os.getenv("POSTMARK_SERVER_TOKEN") or ""
 # not checking if these ones are empty string or not because they should be allowed to be empty string
 
 
-# security functions
 def get_current_username(
     credentials: Annotated[HTTPBasicCredentials, Depends(security)],
 ):
@@ -143,14 +142,8 @@ def read_root():
         "hello": "world",
     }
 
-
-@app.get("/protected")
-def yo(username: Annotated[str, Depends(get_current_username)]):
-    return {"username": username}
-
-
 @app.get("/api/actions/projects/queue")
-def view_queue(emailed_about: int | None = None):
+def view_queue(username: Annotated[str, Depends(get_current_username)], emailed_about: int | None = None,):
     """
     view all projects currently in queue
     if ?emailed_about=0 view all projects not emailed about yet
@@ -180,7 +173,7 @@ def view_queue(emailed_about: int | None = None):
 
 
 @app.post("/api/actions/projects/queue")
-async def add_project_to_queue(project: ProjectRequestBody):
+async def add_project_to_queue(username: Annotated[str, Depends(get_current_username)], project: ProjectRequestBody):
     """
     add a project to the projects queue.
     """
@@ -232,7 +225,7 @@ async def add_project_to_queue(project: ProjectRequestBody):
 
 
 @app.delete("/api/actions/projects/queue")
-def clear_queue(emailed_about: int | None = None, all: bool = False):
+def clear_queue(username: Annotated[str, Depends(get_current_username)], emailed_about: int | None = None, all: bool = False):
     """
     remove projects from queue. this means moving projects from projectQueue into projectQueueTrash.
     default behavior is to clear of only the projects where emailed_about == 1.
@@ -296,7 +289,7 @@ def clear_queue(emailed_about: int | None = None, all: bool = False):
 
 
 @app.get("/api/actions/projects/email")
-def view_email_settings():
+def view_email_settings(username: Annotated[str, Depends(get_current_username)]):
     """
     view current email settings.
     """
@@ -308,7 +301,7 @@ def view_email_settings():
 
 
 @app.post("/api/actions/projects/email")
-def trigger_email():
+def trigger_email(username: Annotated[str, Depends(get_current_username)]):
     """
     trigger an email to be sent. returns an html table with a header, rows corresponding to projects, and columns corresponding to important project fields. separate tables for emailed_about == 0 and == 1. also increments all documents' emailed_about by 1.
     """
