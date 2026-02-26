@@ -19,12 +19,12 @@ def get_current_username(
     credentials: Annotated[HTTPBasicCredentials, Depends(security)],
 ):
     current_username_bytes = credentials.username.encode("utf8")
-    correct_username_bytes = b"virovek"
+    correct_username_bytes = BASIC_AUTH_USER.encode('utf8')
     is_correct_username = secrets.compare_digest(
         current_username_bytes, correct_username_bytes
     )
     current_password_bytes = credentials.password.encode("utf8")
-    correct_password_bytes = b"5VpafCKPAnKZRXuMcNhPxAXj2aaMhwmZ"
+    correct_password_bytes = BASIC_AUTH_PASS.encode('utf8')
     is_correct_password = secrets.compare_digest(
         current_password_bytes, correct_password_bytes
     )
