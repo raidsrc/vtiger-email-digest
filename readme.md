@@ -12,4 +12,6 @@ get routes for viewing email settings and current queue
 post routes for adding document to queue, triggering email
 delete route for clearing queue
 
+http basic auth secures the important endpoints. email, auth, and db are configured via .env
+
 technology used: fastapi, mongodb atlas, postmark, vtiger workflows/webhooks, a bunch of other stuff
