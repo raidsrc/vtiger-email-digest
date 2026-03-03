@@ -10,6 +10,7 @@ from app.class_types import (
     ProjectRequestBody,
     ProjectWrapperMongo,
 )
+from app.helper import split_projects_list_by_activities
 
 
 MONGO_PASSWORD = os.getenv("MONGO_PASSWORD") or ""
@@ -192,7 +193,8 @@ def view_email_settings():
 @actions_router.post("/projects/email")
 def trigger_email():
     """
-    trigger an email to be sent. returns an html table with a header, rows corresponding to projects, and columns corresponding to important project fields. separate tables for emailed_about == 0 and == 1. also increments all documents' emailed_about by 1.
+    trigger an email to be sent. 
+    separate tables for emailed_about == 0 and == 1. also increments all documents' emailed_about by 1.
     """
     # get projects
     projects: list[ProjectWrapperMongo] = []
@@ -204,6 +206,12 @@ def trigger_email():
     )
     new_projects = [p["project"] for p in projects if p["emailed_about"] == 0]
     old_projects = [p["project"] for p in projects if p["emailed_about"] == 1]
+    # both lists are now sorted by activities
+    # need to split them into a bunch of different lists by activities 
+    # i'll just do the main ones and then other. sf9, hek293, cloning, dna, assay, task, other.
+    new_dict = split_projects_list_by_activities(new_projects)
+    old_dict = split_projects_list_by_activities(old_projects)
+    # 
 
     # now send a req to tell postmark to send an email
     headers = {
@@ -220,9 +228,21 @@ def trigger_email():
         "TemplateModel": {
             "today_nice": date.today().strftime("%A, %B %d, %Y"),
             "today_date": str(date.today()),
-            "new_projects": new_projects,
+            "new_projects_sf9": new_dict["sf9"],
+            "new_projects_hek293": new_dict["hek293"],
+            "new_projects_cloning": new_dict["cloning"],
+            "new_projects_dna": new_dict["dna"],
+            "new_projects_task": new_dict["task"],
+            "new_projects_assay": new_dict["assay"],
+            "new_projects_other": new_dict["other"],
             "new_projects_count": len(new_projects),
-            "old_projects": old_projects,
+            "old_projects_sf9": old_dict["sf9"],
+            "old_projects_hek293": old_dict["hek293"],
+            "old_projects_cloning": old_dict["cloning"],
+            "old_projects_dna": old_dict["dna"],
+            "old_projects_task": old_dict["task"],
+            "old_projects_assay": old_dict["assay"],
+            "old_projects_other": old_dict["other"],
             "old_projects_count": len(old_projects),
         },
     }
