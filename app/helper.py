@@ -1,33 +1,62 @@
-from typing import List, Dict
-from app.class_types import Project
+from typing import List, Dict, Literal
+import os
+import requests
+import base64
+from app.class_types import Project, VtigerGetProjectResponse
+
 
 def split_projects_list_by_activities(projects_list: List[Project]):
-  '''
-  take list of projects and split into dict of lists of projects based on activities 
-  return type is a dict with keys str and values lists of projects of 1 activities type
-  '''
-  activities_dict: Dict[str, List[Project | None]] = {
-    "sf9": [],
-    "hek293": [],
-    "cloning": [],
-    "dna": [],
-    "task": [],
-    "assay": [],
-    "other": []
-  }
-  for p in projects_list:
-    if p["cf_project_activities"] == "sf9":
-      activities_dict["sf9"].append(p)
-    elif p["cf_project_activities"] == "hek293":
-      activities_dict["hek293"].append(p)
-    elif p["cf_project_activities"] == "cloning":
-      activities_dict["cloning"].append(p)
-    elif p["cf_project_activities"] == "dna":
-      activities_dict["dna"].append(p)
-    elif p["cf_project_activities"] == "task":
-      activities_dict["task"].append(p)
-    elif p["cf_project_activities"] == "assay":
-      activities_dict["assay"].append(p)
-    else: 
-      activities_dict["other"].append(p)
-  return activities_dict
+    """
+    take list of projects and split into dict of lists of projects based on activities
+    return type is a dict with keys str and values lists of projects of 1 activities type
+    """
+    activities_dict: Dict[str, List[Project | None]] = {
+        "sf9": [],
+        "hek293": [],
+        "cloning": [],
+        "dna": [],
+        "task": [],
+        "assay": [],
+        "other": [],
+    }
+    for p in projects_list:
+        if p["cf_project_activities"] == "SF9":
+            activities_dict["sf9"].append(p)
+        elif p["cf_project_activities"] == "HEK293":
+            activities_dict["hek293"].append(p)
+        elif p["cf_project_activities"] == "CLONING":
+            activities_dict["cloning"].append(p)
+        elif p["cf_project_activities"] == "DNA":
+            activities_dict["dna"].append(p)
+        elif p["cf_project_activities"] == "TASK":
+            activities_dict["task"].append(p)
+        elif p["cf_project_activities"] == "ASSAY":
+            activities_dict["assay"].append(p)
+        else:
+            activities_dict["other"].append(p)
+    return activities_dict
+
+
+def get_project_info_from_vtiger_by_number(project_number: str):
+    """
+    given one project number (PROJ####), fetch its data from vtiger.
+    return dict containing all the info.
+    """
+    user = os.getenv("VT_USER") or ""
+    accesskey = os.getenv("VT_ACCESSKEY") or ""
+    to_enc = f"{user}:{accesskey}".encode("utf-8")
+    enc = base64.b64encode(to_enc)
+    dec = enc.decode("utf-8")
+    headers = {
+        "Authorization": f"Basic {dec}",
+    }
+    r = requests.get(
+        f"https://virovek.od2.vtiger.com/restapi/vtap/api/get-single-project-info?projectnumber={project_number}",
+        headers=headers,
+    )
+    r_body: VtigerGetProjectResponse = r.json()
+    result = r_body['result']
+    if len(result) == 0:
+        return None
+    project = r_body["result"][0]
+    return project

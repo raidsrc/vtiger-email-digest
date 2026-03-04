@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import Dict, List, TypedDict
 from pydantic import BaseModel, Field
 
 
@@ -25,6 +25,14 @@ class Project(TypedDict):
     cf_project_quotenumber: str
     description: str
     cf_project_aavname: str
+    id: str | None 
+    modifiedtime: str | None
+    createdtime: str | None
+
+
+class VtigerGetProjectResponse(TypedDict):
+    success: bool
+    result: List[Dict[str, str]]
 
 
 class ProjectWrapperMongo(TypedDict):
