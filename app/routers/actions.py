@@ -15,6 +15,7 @@ from app.class_types import (
 from app.helper import (
     split_projects_list_by_activities,
     get_project_info_from_vtiger_by_number,
+    convert_UTC_to_houston
 )
 
 
@@ -219,8 +220,8 @@ def trigger_email():
         if full_data is None:  # if no project data came back
             continue  # skip it whatever
         old_project["id"] = full_data["id"]
-        old_project["modifiedtime"] = full_data["modifiedtime"]
-        old_project["createdtime"] = full_data["createdtime"]
+        old_project["modifiedtime"] = convert_UTC_to_houston(full_data["modifiedtime"])
+        old_project["createdtime"] = convert_UTC_to_houston(full_data["createdtime"])
     # now old projects list is updated with some more stuff
 
     # need to split them into a bunch of different lists by activities
