@@ -3,6 +3,8 @@ import os
 import requests
 import base64
 from app.class_types import Project, VtigerGetProjectResponse
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 
 def split_projects_list_by_activities(projects_list: List[Project]):
@@ -55,8 +57,20 @@ def get_project_info_from_vtiger_by_number(project_number: str):
         headers=headers,
     )
     r_body: VtigerGetProjectResponse = r.json()
-    result = r_body['result']
+    result = r_body["result"]
     if len(result) == 0:
         return None
     project = r_body["result"][0]
     return project
+
+
+def convert_UTC_to_houston(date_time: str | None):
+    """
+    given string that looks like "2026-03-03 16:48:40" and knowing that it's UTC, convert it to houston time
+    """
+    if date_time is None or "":
+        return ""
+    utc = datetime.fromisoformat(f"{date_time}Z")
+    chicago_zone = ZoneInfo("America/Chicago")
+    new_time = utc.astimezone(chicago_zone)
+    return new_time.strftime("%Y-%m-%d %H:%M:%S")
