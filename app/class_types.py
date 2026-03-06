@@ -30,7 +30,7 @@ class Project(TypedDict):
     createdtime: str | None
 
 
-class VtigerGetProjectResponse(TypedDict):
+class VtigerGetProjectResponse(BaseModel):
     success: bool
     result: List[Dict[str, str]]
 
