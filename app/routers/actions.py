@@ -219,6 +219,12 @@ def trigger_email():
         full_data = get_project_info_from_vtiger_by_number(old_project["project_no"])
         if full_data is None:  # if no project data came back
             continue  # skip it whatever
+        # update fields with new data
+        old_project["projectstatus"] = full_data["projectstatus"]
+        old_project["projectname"] = full_data["projectname"]
+        old_project["cf_project_clonename"] = full_data["cf_project_clonename"]
+        old_project["cf_project_aavname"] = full_data["cf_project_aavname"]
+        # and add the other stuff
         old_project["id"] = full_data["id"]
         old_project["modifiedtime"] = convert_UTC_to_houston(full_data["modifiedtime"])
         old_project["createdtime"] = convert_UTC_to_houston(full_data["createdtime"])

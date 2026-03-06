@@ -5,6 +5,7 @@ import base64
 from app.class_types import Project, VtigerGetProjectResponse
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import pydantic
 
 
 def split_projects_list_by_activities(projects_list: List[Project]):
@@ -57,34 +58,37 @@ def get_project_info_from_vtiger_by_number(project_number: str):
             f"https://virovek.od2.vtiger.com/restapi/vtap/api/get-single-project-info?projectnumber={project_number}",
             headers=headers,
         )
-        if r.status_code != requests.codes.ok:  # if not good http code
-            r.raise_for_status()
-        # otherwise parse body
-        r_body: VtigerGetProjectResponse = r.json()
-        result = r_body.result
+        r.raise_for_status()
+        # validate using pydantic
+        get_project_response = VtigerGetProjectResponse.model_validate(r.json())
+        result = get_project_response.result
         if len(result) == 0:
             print("No projects match this project number.")
             return None
-        project = r_body.result[0]
+        project = result[0]
         return project
-    except requests.ConnectionError:
+    except pydantic.ValidationError as val_err:
         print(
-            f"ConnectionError in get_project_info_from_vtiger_by_number for {project_number}."
+            f"Validation error '{val_err}' in get_project_info_from_vtiger_by_number for {project_number}."
+        )
+    except requests.ConnectionError as conn_err:
+        print(
+            f"ConnectionError '{conn_err}' in get_project_info_from_vtiger_by_number for {project_number}."
         )
         return None
-    except requests.HTTPError:
+    except requests.HTTPError as http_err:
         print(
-            f"HTTPError in get_project_info_from_vtiger_by_number for {project_number}."
+            f"HTTPError '{http_err}' in get_project_info_from_vtiger_by_number for {project_number}."
         )
         return None
-    except requests.JSONDecodeError:
+    except requests.JSONDecodeError as json_err:
         print(
-            f"JSONDecodeError in get_project_info_from_vtiger_by_number for {project_number}."
+            f"JSONDecodeError '{json_err}' in get_project_info_from_vtiger_by_number for {project_number}."
         )
         return None
-    finally:
-        print(f"Finally block run in get_project_info_from_vtiger_by_number for {project_number}.")
-        return None
+    except:
+        print(f"Other error in get_project_info_from_vtiger_by_number for {project_number}.")
+        return None 
 
 
 def convert_UTC_to_houston(date_time: str | None):
