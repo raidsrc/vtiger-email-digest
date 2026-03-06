@@ -1,6 +1,6 @@
-from typing import List, cast
+from typing import List
 
-from fastapi import Depends, APIRouter, Body
+from fastapi import Depends, APIRouter
 from datetime import datetime, date
 import os
 from pymongo import MongoClient
@@ -15,7 +15,7 @@ from app.class_types import (
 from app.helper import (
     split_projects_list_by_activities,
     get_project_info_from_vtiger_by_number,
-    convert_UTC_to_houston
+    convert_UTC_to_houston,
 )
 
 
@@ -39,7 +39,7 @@ EMAIL_SETTINGS_RECIPIENTS = os.getenv("EMAIL_SETTINGS_RECIPIENTS") or ""
 EMAIL_SETTINGS_CC = os.getenv("EMAIL_SETTINGS_CC") or ""
 EMAIL_SETTINGS_BCC = os.getenv("EMAIL_SETTINGS_BCC") or ""
 POSTMARK_SERVER_TOKEN = os.getenv("POSTMARK_SERVER_TOKEN") or ""
-# not checking if these ones are empty string or not because they should be allowed to be empty string
+# not throwing error if these ones are empty string because they should be allowed to be empty string
 
 
 actions_router = APIRouter(dependencies=[Depends(get_current_username)])
