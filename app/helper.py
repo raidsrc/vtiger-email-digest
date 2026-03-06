@@ -52,16 +52,39 @@ def get_project_info_from_vtiger_by_number(project_number: str):
     headers = {
         "Authorization": f"Basic {dec}",
     }
-    r = requests.get(
-        f"https://virovek.od2.vtiger.com/restapi/vtap/api/get-single-project-info?projectnumber={project_number}",
-        headers=headers,
-    )
-    r_body: VtigerGetProjectResponse = r.json()
-    result = r_body["result"]
-    if len(result) == 0:
+    try:
+        r = requests.get(
+            f"https://virovek.od2.vtiger.com/restapi/vtap/api/get-single-project-info?projectnumber={project_number}",
+            headers=headers,
+        )
+        if r.status_code != requests.codes.ok:  # if not good http code
+            r.raise_for_status()
+        # otherwise parse body
+        r_body: VtigerGetProjectResponse = r.json()
+        result = r_body.result
+        if len(result) == 0:
+            print("No projects match this project number.")
+            return None
+        project = r_body.result[0]
+        return project
+    except requests.ConnectionError:
+        print(
+            f"ConnectionError in get_project_info_from_vtiger_by_number for {project_number}."
+        )
         return None
-    project = r_body["result"][0]
-    return project
+    except requests.HTTPError:
+        print(
+            f"HTTPError in get_project_info_from_vtiger_by_number for {project_number}."
+        )
+        return None
+    except requests.JSONDecodeError:
+        print(
+            f"JSONDecodeError in get_project_info_from_vtiger_by_number for {project_number}."
+        )
+        return None
+    finally:
+        print(f"Finally block run in get_project_info_from_vtiger_by_number for {project_number}.")
+        return None
 
 
 def convert_UTC_to_houston(date_time: str | None):
