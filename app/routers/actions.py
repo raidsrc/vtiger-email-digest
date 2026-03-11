@@ -134,7 +134,7 @@ def clear_queue(emailed_about: int | None = None, all: bool = False):
             )  # emailed 1x projects
         else:
             projectsCursor = db_queue_collection.find(
-                {"emailed_about": {"$gt": 2}}
+                {"emailed_about": {"$gte": 2}}
             )  # emailed 2x projects
 
     for project in projectsCursor:
@@ -166,7 +166,7 @@ def clear_queue(emailed_about: int | None = None, all: bool = False):
             query_filter = {"emailed_about": 1}
             db_queue_collection.delete_many(query_filter)
         else:
-            query_filter = {"emailed_about": 2}
+            query_filter = {"emailed_about": {"$gte": 2}}
             db_queue_collection.delete_many(query_filter)
 
     # deletion finished, now to insert into trash collection
