@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import Depends, APIRouter
 from datetime import datetime, date
 import os
@@ -7,6 +5,7 @@ from pymongo import MongoClient
 from pymongo.database import Database
 import requests
 import json
+from zoneinfo import ZoneInfo
 from app.deps import get_current_username
 from app.class_types import (
     ProjectRequestBody,
@@ -87,10 +86,11 @@ async def add_project_to_queue(project: ProjectRequestBody):
     # write to db with datetime received
     # return that the data has been written to db successfully
 
-    now = datetime.now()
+    UTC = ZoneInfo('UTC')
+    now_utc = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
+    now_houston_time = convert_UTC_to_houston(now_utc)
     document_to_insert = {
-        "datetime_received": str(now),
-        "timezone": str(now.astimezone().tzname()),
+        "datetime_received": now_utc,
         "emailed_about": 0,
         "project": {
             "projectstatus": project.projectstatus or "",
@@ -102,6 +102,7 @@ async def add_project_to_queue(project: ProjectRequestBody):
             "cf_project_quotenumber": project.cf_project_quotenumber or "",
             "description": project.description or "",
             "cf_project_aavname": project.cf_project_aavname or "",
+            "vtiger_email_digest_received_datetime_houston": now_houston_time
         },
     }
     db_queue_collection.insert_one(document_to_insert)  # type: ignore
@@ -117,7 +118,7 @@ async def add_project_to_queue(project: ProjectRequestBody):
 def clear_queue(emailed_about: int | None = None, all: bool = False):
     """
     remove projects from queue. this means moving projects from projectQueue into projectQueueTrash.
-    default behavior is to clear only the projects where emailed_about == 2.
+    default behavior is to clear only the projects where emailed_about >= 2.
     """
     projects: list[ProjectWrapperMongo] = []
     if all == True:
@@ -133,7 +134,7 @@ def clear_queue(emailed_about: int | None = None, all: bool = False):
             )  # emailed 1x projects
         else:
             projectsCursor = db_queue_collection.find(
-                {"emailed_about": 2}
+                {"emailed_about": {"$gt": 2}}
             )  # emailed 2x projects
 
     for project in projectsCursor:
