@@ -86,9 +86,9 @@ async def add_project_to_queue(project: ProjectRequestBody):
     # write to db with datetime received
     # return that the data has been written to db successfully
 
-    UTC = ZoneInfo('UTC')
+    UTC = ZoneInfo("UTC")
     now_utc = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
-    now_houston_time = convert_UTC_to_houston(now_utc) 
+    now_houston_time = convert_UTC_to_houston(now_utc)
     document_to_insert = {
         "datetime_received": now_utc,
         "emailed_about": 0,
@@ -102,7 +102,7 @@ async def add_project_to_queue(project: ProjectRequestBody):
             "cf_project_quotenumber": project.cf_project_quotenumber or "",
             "description": project.description or "",
             "cf_project_aavname": project.cf_project_aavname or "",
-            "vtiger_email_digest_received_datetime_houston": now_houston_time
+            "vtiger_email_digest_received_datetime_houston": now_houston_time,
         },
     }
     db_queue_collection.insert_one(document_to_insert)  # type: ignore
