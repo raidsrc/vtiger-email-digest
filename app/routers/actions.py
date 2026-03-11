@@ -88,7 +88,7 @@ async def add_project_to_queue(project: ProjectRequestBody):
 
     UTC = ZoneInfo('UTC')
     now_utc = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
-    now_houston_time = convert_UTC_to_houston(now_utc)
+    now_houston_time = convert_UTC_to_houston(now_utc) 
     document_to_insert = {
         "datetime_received": now_utc,
         "emailed_about": 0,
