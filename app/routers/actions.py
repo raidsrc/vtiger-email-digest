@@ -47,23 +47,22 @@ actions_router = APIRouter(dependencies=[Depends(get_current_username)])
 @actions_router.get("/projects/queue")
 def view_queue(
     emailed_about: int | None = None,
+    behind_schedule: bool | None = None,
 ):
     """
     view all projects currently in queue
+    default behavior is to get all projects
     if ?emailed_about=0 view all projects not emailed about yet
     if ?emailed_about=1 view all projects emailed about once
+    if ?behind_schedule=true view projects that are behind schedule
     """
     projects: list[ProjectWrapperMongo] = []
-    if emailed_about == 0:
-        projectsCursor = db_queue_collection.find(
-            {"emailed_about": 0}
-        )  # not emailed projects
-    elif emailed_about == 1:
-        projectsCursor = db_queue_collection.find(
-            {"emailed_about": 1}
-        )  # emailed 1x projects
-    else:
-        projectsCursor = db_queue_collection.find()  # all projects
+    query_filter = {}
+    if emailed_about is not None:
+        query_filter["emailed_about"] = emailed_about
+    if behind_schedule is not None:
+        query_filter["behind_schedule"] = behind_schedule
+    projectsCursor = db_queue_collection.find(query_filter)
 
     for project in projectsCursor:
         oid = str(project["_id"])
