@@ -89,10 +89,6 @@ async def add_project_to_queue(project: ProjectRequestBody):
     now_utc = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
     now_houston_time = convert_UTC_to_houston(now_utc)
     behind_schedule = True if project.behind_schedule == "true" else False
-    # whoops forgot about this thing i need to do here
-    # upsert if behind schedule
-    # TODO!!!!!
-
     document_to_insert = {
         "datetime_received": now_utc,
         "emailed_about": 0,
@@ -110,10 +106,22 @@ async def add_project_to_queue(project: ProjectRequestBody):
             "vtiger_email_digest_received_datetime_houston": now_houston_time,
         },
     }
-    db_queue_collection.insert_one(document_to_insert)  # type: ignore
+    # if behind schedule, upsert. if a behind schedule project with this project_no already exists in the queue, replace it with the new data. otherwise, it's new so insert as normal.
+    upserted = False
+    if behind_schedule is True:
+        document_to_upsert = document_to_insert # just so i'm clear on what it is.
+        query_filter = {
+            "project.project_no": project.project_no,
+            "behind_schedule": True,
+        }
+        replace_return = db_queue_collection.replace_one(query_filter, document_to_upsert, upsert=True)  # type: ignore
+        upserted = replace_return.did_upsert
+    else:
+        db_queue_collection.insert_one(document_to_insert)  # type: ignore
     document_to_insert["_id"] = str(document_to_insert["_id"])
     response = {
         "success": True,
+        "upserted": upserted,
         "document_added_to_database": document_to_insert,
     }
     return response
