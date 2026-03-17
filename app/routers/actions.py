@@ -88,7 +88,7 @@ async def add_project_to_queue(project: ProjectRequestBody):
     UTC = ZoneInfo("UTC")
     now_utc = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
     now_houston_time = convert_UTC_to_houston(now_utc)
-    behind_schedule = True if project.behind_schedule is "true" else False
+    behind_schedule = True if project.behind_schedule == "true" else False
     document_to_insert = {
         "datetime_received": now_utc,
         "emailed_about": 0,
@@ -116,27 +116,30 @@ async def add_project_to_queue(project: ProjectRequestBody):
 
 
 @actions_router.delete("/projects/queue")
-def clear_queue(emailed_about: int | None = None, all: bool = False):
+def clear_queue(
+    emailed_about: int | None = None,
+    all_projects: bool | None = None,
+    behind_schedule: bool | None = False,
+):
     """
     remove projects from queue. this means moving projects from projectQueue into projectQueueTrash.
     default behavior is to clear only the projects where emailed_about >= 2.
+    if all_projects is true, delete all projects
+    if behind_schedule is true, delete those that are behind schedule
     """
+
     projects: list[ProjectWrapperMongo] = []
-    if all == True:
-        projectsCursor = db_queue_collection.find()  # all projects
+    query_filter = {}
+    if emailed_about is not None:
+        query_filter["emailed_about"] = emailed_about
     else:
-        if emailed_about == 0:
-            projectsCursor = db_queue_collection.find(
-                {"emailed_about": 0}
-            )  # just arrived, not emailed projects
-        elif emailed_about == 1:
-            projectsCursor = db_queue_collection.find(
-                {"emailed_about": 1}
-            )  # emailed 1x projects
-        else:
-            projectsCursor = db_queue_collection.find(
-                {"emailed_about": {"$gte": 2}}
-            )  # emailed 2x projects
+        query_filter["emailed_about"] = {"$gte: 2"}
+    if behind_schedule is not None:
+        query_filter["behind_schedule"] = behind_schedule
+    if all_projects is True:
+        query_filter = {}
+
+    projectsCursor = db_queue_collection.find(query_filter)
 
     for project in projectsCursor:
         oid = str(project["_id"])
