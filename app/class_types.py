@@ -2,7 +2,7 @@ from typing import Dict, List, TypedDict
 from pydantic import BaseModel, Field
 
 
-# what's received from vtiger
+# what's received from vtiger when the webhook fires
 class ProjectRequestBody(BaseModel):
     projectstatus: str = ""
     cf_project_activities: str = ""
@@ -13,6 +13,7 @@ class ProjectRequestBody(BaseModel):
     cf_project_quotenumber: str = ""
     description: str = ""
     cf_project_aavname: str = ""
+    behind_schedule: str | None = "false"
 
 
 class Project(TypedDict):
