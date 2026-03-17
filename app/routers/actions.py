@@ -159,19 +159,7 @@ def clear_queue(
         return response
 
     # otherwise, delete stuff
-    if all == True:
-        query_filter = {}
-        db_queue_collection.delete_many(query_filter)
-    else:
-        if emailed_about == 0:
-            query_filter = {"emailed_about": 0}
-            db_queue_collection.delete_many(query_filter)
-        elif emailed_about == 1:
-            query_filter = {"emailed_about": 1}
-            db_queue_collection.delete_many(query_filter)
-        else:
-            query_filter = {"emailed_about": {"$gte": 2}}
-            db_queue_collection.delete_many(query_filter)
+    db_queue_collection.delete_many(query_filter)
 
     # deletion finished, now to insert into trash collection
     db_trash_collection.insert_many(projects)
