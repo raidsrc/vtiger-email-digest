@@ -89,6 +89,10 @@ async def add_project_to_queue(project: ProjectRequestBody):
     now_utc = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
     now_houston_time = convert_UTC_to_houston(now_utc)
     behind_schedule = True if project.behind_schedule == "true" else False
+    # whoops forgot about this thing i need to do here
+    # upsert if behind schedule
+    # TODO!!!!!
+
     document_to_insert = {
         "datetime_received": now_utc,
         "emailed_about": 0,
