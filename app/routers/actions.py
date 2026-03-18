@@ -267,7 +267,7 @@ def trigger_email():
         "To": EMAIL_SETTINGS_RECIPIENTS,
         "Cc": EMAIL_SETTINGS_CC,
         "MessageStream": "broadcast",
-        "TemplateAlias": "digest-template-1",
+        "TemplateAlias": "digest-template-2",
         "TemplateModel": {
             "today_nice": date.today().strftime("%A, %B %d, %Y"),
             "today_date": str(date.today()),
