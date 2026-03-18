@@ -13,7 +13,7 @@ class ProjectRequestBody(BaseModel):
     cf_project_quotenumber: str = ""
     description: str = ""
     cf_project_aavname: str = ""
-    behind_schedule: str | None = "false"
+    behind_schedule: str | bool | None = "false"
     modifiedtime: str | None = None
 
 

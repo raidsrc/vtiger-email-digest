@@ -1,3 +1,5 @@
+from typing import Any, Dict, Mapping
+
 from fastapi import Depends, APIRouter
 from datetime import datetime, date
 import os
@@ -88,7 +90,12 @@ async def add_project_to_queue(project: ProjectRequestBody):
     UTC = ZoneInfo("UTC")
     now_utc = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
     now_houston_time = convert_UTC_to_houston(now_utc)
-    behind_schedule = True if project.behind_schedule == "true" else False
+    # be ready for behind_schedule coming from vtiger workflow to be a string or a bool or none.
+    behind_schedule = (
+        True
+        if project.behind_schedule == "true" or project.behind_schedule is True
+        else False
+    )
     document_to_insert = {
         "datetime_received": now_utc,
         "emailed_about": 0,
@@ -104,22 +111,31 @@ async def add_project_to_queue(project: ProjectRequestBody):
             "description": project.description or "",
             "cf_project_aavname": project.cf_project_aavname or "",
             "vtiger_email_digest_received_datetime_houston": now_houston_time,
+            "modifiedtime": project.modifiedtime or "",
         },
     }
     # if behind schedule, upsert. if a behind schedule project with this project_no already exists in the queue, replace it with the new data. otherwise, it's new so insert as normal.
-    upserted = False
+    upserted: bool = False
     if behind_schedule is True:
         document_to_upsert = document_to_insert  # just so i'm clear on what it is.
-        document_to_upsert["modifiedtime"] = convert_UTC_to_houston(project.modifiedtime) or ""
+        # update the modified time with the new value sent from vt
+        document_to_upsert["project"]["modifiedtime"] = (
+            convert_UTC_to_houston(project.modifiedtime) or ""
+        )
+        # match project number and behind schedule
         query_filter = {
             "project.project_no": project.project_no,
             "behind_schedule": True,
         }
         replace_return = db_queue_collection.replace_one(query_filter, document_to_upsert, upsert=True)  # type: ignore
-        upserted = replace_return.did_upsert
+        # there is no did_upsert. for some reason the autocompletion and the pymongo docs are wrong.
+        # there is an updatedExisting property on the raw_result, though. using that.
+        raw_result = replace_return.raw_result
+        assert raw_result is not None
+        upserted = raw_result["updatedExisting"]
     else:
         db_queue_collection.insert_one(document_to_insert)  # type: ignore
-    document_to_insert["_id"] = str(document_to_insert["_id"])
+    # document_to_insert["_id"] = str(document_to_insert["_id"])
     response = {
         "success": True,
         "upserted": upserted,
