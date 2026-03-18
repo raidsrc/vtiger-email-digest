@@ -109,7 +109,7 @@ async def add_project_to_queue(project: ProjectRequestBody):
     # if behind schedule, upsert. if a behind schedule project with this project_no already exists in the queue, replace it with the new data. otherwise, it's new so insert as normal.
     upserted = False
     if behind_schedule is True:
-        document_to_upsert = document_to_insert # just so i'm clear on what it is.
+        document_to_upsert = document_to_insert  # just so i'm clear on what it is.
         query_filter = {
             "project.project_no": project.project_no,
             "behind_schedule": True,
@@ -216,9 +216,22 @@ def trigger_email():
     projects = sorted(
         projects, key=lambda project: project["project"]["cf_project_activities"]
     )
-    new_projects = [p["project"] for p in projects if p["emailed_about"] == 0]
-    old_projects = [p["project"] for p in projects if p["emailed_about"] == 1]
-    # both lists are now sorted by activities
+    # get projects that are not behind schedule that have been emailed about 0 times or 1 time.
+    new_projects = [
+        p["project"]
+        for p in projects
+        if p["emailed_about"] == 0 and p["behind_schedule"] is not True
+    ]
+    old_projects = [
+        p["project"]
+        for p in projects
+        if p["emailed_about"] == 1 and p["behind_schedule"] is not True
+    ]
+    # get projects that are behind schedule
+    behind_schedule_projects = [
+        p["project"] for p in projects if p["behind_schedule"] is True
+    ]
+    # lists are now sorted by activities
     # fetch updated data from vtiger on all the old projects, then add that data to those old projects
     for old_project in old_projects:
         full_data = get_project_info_from_vtiger_by_number(old_project["project_no"])
@@ -239,6 +252,8 @@ def trigger_email():
     # i'll just do the main ones and then other. sf9, hek293, cloning, dna, assay, task, other.
     new_dict = split_projects_list_by_activities(new_projects)
     old_dict = split_projects_list_by_activities(old_projects)
+
+    # as for the behind schedule projects: i'll just dump them all into a single table. there shouldn't be that many of them anyway. no further processing needed.
 
     # now send a req to tell postmark to send an email
     headers = {
@@ -271,6 +286,8 @@ def trigger_email():
             "old_projects_assay": old_dict["assay"],
             "old_projects_other": old_dict["other"],
             "old_projects_count": len(old_projects),
+            "behind_schedule_projects": behind_schedule_projects,
+            "behind_schedule_projects_count": len(behind_schedule_projects),
         },
     }
     data = json.dumps(data)

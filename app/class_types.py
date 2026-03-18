@@ -40,7 +40,8 @@ class ProjectWrapperMongo(TypedDict):
     _id: str  # in the db it's an ObjectId. make sure to convert this to a string before returning in fastapi.
     project: Project
     datetime_received: str
-    timezone: str
+    timezone: str | None
+    behind_schedule: str | None
     emailed_about: (
         int  # if a project is included in a digest email, this counter increments.
     )
