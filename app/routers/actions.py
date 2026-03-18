@@ -110,6 +110,7 @@ async def add_project_to_queue(project: ProjectRequestBody):
     upserted = False
     if behind_schedule is True:
         document_to_upsert = document_to_insert  # just so i'm clear on what it is.
+        document_to_upsert["modifiedtime"] = convert_UTC_to_houston(project.modifiedtime) or ""
         query_filter = {
             "project.project_no": project.project_no,
             "behind_schedule": True,
@@ -319,5 +320,7 @@ def trigger_email():
         "old_projects_assay": old_dict["assay"],
         "old_projects_other": old_dict["other"],
         "old_projects_count": len(old_projects),
+        "behind_schedule_projects": behind_schedule_projects,
+        "behind_schedule_projects_count": len(behind_schedule_projects),
         "email_response": rbody,
     }

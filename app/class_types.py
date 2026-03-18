@@ -14,6 +14,7 @@ class ProjectRequestBody(BaseModel):
     description: str = ""
     cf_project_aavname: str = ""
     behind_schedule: str | None = "false"
+    modifiedtime: str | None = None
 
 
 class Project(TypedDict):
