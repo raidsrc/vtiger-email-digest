@@ -42,7 +42,7 @@ class ProjectWrapperMongo(TypedDict):
     project: Project
     datetime_received: str
     timezone: str | None
-    behind_schedule: str | None
+    behind_schedule: bool | None
     emailed_about: (
         int  # if a project is included in a digest email, this counter increments.
     )
