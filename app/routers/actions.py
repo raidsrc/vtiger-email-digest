@@ -237,16 +237,17 @@ def trigger_email():
     new_projects = [
         p["project"]
         for p in projects
-        if p["emailed_about"] == 0 and p["behind_schedule"] is not True
+        if p.get("emailed_about") == 0 and p.get("behind_schedule") is not True
+        # use .get in dictionaries to avoid KeyError if it doesn't exist
     ]
     old_projects = [
         p["project"]
         for p in projects
-        if p["emailed_about"] == 1 and p["behind_schedule"] is not True
+        if p.get("emailed_about") == 1 and p.get("behind_schedule") is not True
     ]
     # get projects that are behind schedule
     behind_schedule_projects = [
-        p["project"] for p in projects if p["behind_schedule"] is True
+        p.get("project") for p in projects if p.get("behind_schedule") is True
     ]
     # lists are now sorted by activities
     # fetch updated data from vtiger on all the old projects, then add that data to those old projects
