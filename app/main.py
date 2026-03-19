@@ -22,5 +22,3 @@ def read_root():
         "timezone": str(now.astimezone().tzname()),
         "hello": "world",
     }
-
-# TODO: still need to add the vtiger workflow that sends project data over for behind schedule projects
