@@ -312,16 +312,14 @@ def test_split_projects_list_by_activities(projects_lists):
         "assay": [],
         "other": [],
     }
-    
+
     d = split_projects_list_by_activities(
         projects_lists.get("project_list_all_dna")
     ).get("dna")
     assert d is not None
     assert len(d) == 3
 
-    norm = split_projects_list_by_activities(
-        projects_lists.get("project_list_normal")
-    )
+    norm = split_projects_list_by_activities(projects_lists.get("project_list_normal"))
     sf9 = norm.get("sf9")
     assert sf9 is not None
     assert len(sf9) == 1
@@ -332,7 +330,7 @@ def test_split_projects_list_by_activities(projects_lists):
     assert assay is not None
     assert len(assay) == 2
     assay_project_2 = assay[1]
-    assert assay_project_2 is not None 
+    assert assay_project_2 is not None
     assert assay_project_2.get("projectname") == "assay project 2"
 
 
@@ -342,5 +340,4 @@ def no_requests(monkeypatch):
     monkeypatch.delattr("requests.sessions.Session.request")
 
 
-# test all the endpoints
 # test all the helper functions
