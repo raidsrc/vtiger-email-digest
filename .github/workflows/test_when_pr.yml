@@ -1,0 +1,29 @@
+name: Run Pytest when a pull request is made to main branch
+
+on:
+  pull_request:
+    branches: 
+      - main
+
+permissions: 
+  pull-requests: write 
+
+jobs: 
+  run-python-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4 
+
+      - name: set up python 
+        uses: actions/setup-python@v4 
+
+      - name: install deps 
+        run: | 
+          pip install -r requirements.txt 
+
+      - name: run tests 
+        run: pytest
+
+      
