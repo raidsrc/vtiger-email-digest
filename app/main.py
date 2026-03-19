@@ -22,4 +22,3 @@ def read_root():
         "timezone": str(now.astimezone().tzname()),
         "hello": "world",
     }
-
