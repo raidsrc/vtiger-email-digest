@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 import pydantic
 
 
-def split_projects_list_by_activities(projects_list: List[Project]):
+def split_projects_list_by_activities(projects_list: List[Project] | None = None):
     """
     take list of projects and split into dict of lists of projects based on activities
     return type is a dict with keys str and values lists of projects of 1 activities type
@@ -22,6 +22,8 @@ def split_projects_list_by_activities(projects_list: List[Project]):
         "assay": [],
         "other": [],
     }
+    if projects_list is None:
+        return activities_dict
     for p in projects_list:
         if p["cf_project_activities"] == "SF9":
             activities_dict["sf9"].append(p)
@@ -91,11 +93,11 @@ def get_project_info_from_vtiger_by_number(project_number: str):
         return None 
 
 
-def convert_UTC_to_houston(date_time: str | None):
+def convert_UTC_to_houston(date_time: str | None = ""):
     """
     given string that looks like "2026-03-03 16:48:40" and knowing that it's UTC, convert it to houston time
     """
-    if date_time is None or "":
+    if date_time == None or date_time == "":
         return ""
     utc = datetime.fromisoformat(f"{date_time}Z")
     chicago_zone = ZoneInfo("America/Chicago")
