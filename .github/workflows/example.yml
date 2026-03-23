@@ -3,13 +3,18 @@ on: [push]
 jobs:
   start-mongo:
     runs-on: ubuntu-latest
-    name: job that starts mongo server 
+    name: job that starts mongo server and imports test data 
     steps:
       - name: checkout
         uses: actions/checkout@v5
 
-      - name: start mongo 
-        uses: supercharge/mongodb-github-action@1.12.1
+      # - name: start mongo 
+        # uses: supercharge/mongodb-github-action@1.12.1
+
+      - name: install mongodb database tools 
+        run: |
+          wget https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
+          sudo apt install ./mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
 
       - name: mongoimport 
         run: mongoimport testing_seed.json
