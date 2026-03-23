@@ -1,0 +1,17 @@
+on: [push]
+
+jobs:
+  hello_from_container_job:
+    runs-on: ubuntu-latest
+    name: job running from container that says hello
+    steps:
+      - name: checkout
+        uses: actions/checkout@v5
+      - name: hello world action step
+        uses: ./
+        id: hello
+        with:
+          who-to-greet: "ray"
+          some-number: "389472"
+      - name: get time
+        run: echo "The time was ${{steps.hello.outputs.time}}"

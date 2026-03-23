@@ -1,0 +1,21 @@
+# action.yml
+# actions metadata file apparently
+name: "Hello World"
+description: "Greet someone and record the time"
+inputs:
+  who-to-greet: # id of input
+    description: "Who to greet"
+    required: true
+    default: "World"
+  some-number: 
+    description: any number 
+    required: true 
+    default: "999"
+outputs:
+  time: # id of output
+    description: "The time we greeted you"
+runs:
+  using: "docker"
+  image: "Dockerfile"
+  args:
+    - ${{ inputs.who-to-greet }}
