@@ -33,10 +33,25 @@ jobs:
   run-python-tests:
     runs-on: ubuntu-latest
     needs: start-mongo
+    environment: for my testing workflow
+    env:
+      EMAIL_SETTINGS_RECIPIENTS: ${{vars.EMAIL_SETTINGS_RECIPIENTS}}
+      EMAIL_SETTINGS_CC: ${{vars.EMAIL_SETTINGS_CC}}
+      POSTMARK_SERVER_TOKEN: ${{secrets.POSTMARK_SERVER_TOKEN}}
+      MONGO_URI_PREFIX: ${{vars.MONGO_URI_PREFIX}}
+      MONGO_URI_ADDRESS: ${{vars.MONGO_URI_ADDRESS}}
+      MONGO_USERNAME: ${{vars.MONGO_USERNAME}}
+      MONGO_PASSWORD: ${{secrets.MONGO_PASSWORD}}
+      QUEUE_COLLECTION: ${{vars.QUEUE_COLLECTION}}
+      TRASH_COLLECTION: ${{vars.TRASH_COLLECTION}}
+      BASIC_AUTH_USER: ${{vars.BASIC_AUTH_USER}}
+      BASIC_AUTH_PASS: ${{secrets.BASIC_AUTH_PASS}}
+      VT_USER: ${{vars.VT_USER}}
+      VT_ACCESSKEY: ${{secrets.VT_ACCESSKEY}}
 
     steps:
       - name: checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: set up python
         uses: actions/setup-python@v4
@@ -44,6 +59,9 @@ jobs:
       - name: install deps
         run: |
           pip install -r requirements.txt
+
+      - name: test that env vars are available
+        run: python -c "import os; print(os.environ.get("MONGO_URI_PREFIX"))"
 
       - name: run tests
         run: pytest
