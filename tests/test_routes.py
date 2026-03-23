@@ -3,3 +3,11 @@ imma keep it 100, this app is so small. i'm not gonna bother writing tests for t
 """
 
 pass
+
+
+"""
+wait a sec
+testing idea: spin up a docker container containing a mongodb instance, populate it with sample data, give env vars to the app to make it connect to that instance, run it in github actions, run tests, destroy everything when done
+
+i'm cooking
+"""
