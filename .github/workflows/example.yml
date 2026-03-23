@@ -9,7 +9,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: start mongo 
-        uses: supercharge/mongodb-github-action@latest
+        uses: supercharge/mongodb-github-action@1.12.1
 
       - name: get time
         run: echo "The time was ${{steps.hello.outputs.time}}"
