@@ -17,10 +17,18 @@ from app.helper import (
     convert_UTC_to_houston,
 )
 
-
+MONGO_URI_PREFIX = os.getenv("MONGO_URI_PREFIX") or ""
+MONGO_URI_ADDRESS = os.getenv("MONGO_URI_ADDRESS") or ""
+MONGO_USERNAME = os.getenv("MONGO_USERNAME") or ""
 MONGO_PASSWORD = os.getenv("MONGO_PASSWORD") or ""
 QUEUE_COLLECTION = os.getenv("QUEUE_COLLECTION") or ""
 TRASH_COLLECTION = os.getenv("TRASH_COLLECTION") or ""
+if MONGO_URI_PREFIX == "":
+    raise Exception("MONGO_URI_PREFIX missing")
+if MONGO_URI_ADDRESS == "":
+    raise Exception("MONGO_URI_ADDRESS missing")
+if MONGO_USERNAME == "":
+    raise Exception("MONGO_USERNAME missing")
 if MONGO_PASSWORD == "":
     raise Exception("MONGO_PASSWORD missing")
 if QUEUE_COLLECTION == "":
@@ -28,7 +36,7 @@ if QUEUE_COLLECTION == "":
 if TRASH_COLLECTION == "":
     raise Exception("TRASH_COLLECTION missing")
 
-uri = f"mongodb+srv://admin:{MONGO_PASSWORD}@cluster0.ps7aafk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+uri = f"{MONGO_URI_PREFIX}{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_URI_ADDRESS}"
 client: MongoClient[ProjectWrapperMongo] = MongoClient(uri)
 db: Database[ProjectWrapperMongo] = client["vtigerEmailDigestDatabase"]
 db_queue_collection = db[QUEUE_COLLECTION]
