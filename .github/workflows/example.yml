@@ -8,8 +8,8 @@ jobs:
       - name: checkout
         uses: actions/checkout@v5
 
-      # - name: start mongo 
-        # uses: supercharge/mongodb-github-action@1.12.1
+      - name: start mongo 
+        uses: supercharge/mongodb-github-action@1.12.1
 
       - name: install mongodb database tools 
         run: |
@@ -17,6 +17,6 @@ jobs:
           sudo apt install ./mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
 
       - name: mongoimport 
-        run: mongoimport testing_seed.json
+        run: mongoimport --collection="devProjectQueue" testing_seed.json
       
 
