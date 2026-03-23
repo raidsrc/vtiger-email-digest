@@ -84,7 +84,7 @@ def view_queue(
 
 
 @actions_router.post("/projects/queue")
-async def add_project_to_queue(project: ProjectRequestBody):
+def add_project_to_queue(project: ProjectRequestBody):
     """
     add a project to the projects queue.
     """

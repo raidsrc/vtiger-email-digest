@@ -1,4 +1,9 @@
-on: [push]
+name: MongoDB Setup
+
+on:
+  pull_request:
+    branches: 
+      - main
 
 jobs:
   start-mongo:
@@ -8,7 +13,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v5
 
-      - name: start mongo 
+      - name: start mongo in docker container 
         uses: supercharge/mongodb-github-action@1.12.1
 
       - name: install mongodb database tools 
@@ -16,7 +21,9 @@ jobs:
           wget https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
           sudo apt install ./mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
 
-      - name: mongoimport 
+      - name: mongoimport testing data 
         run: mongoimport --collection="devProjectQueue" --jsonArray testing_seed.json
+
+      
       
 

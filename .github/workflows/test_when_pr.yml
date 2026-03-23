@@ -1,9 +1,10 @@
 name: Run Pytest when a pull request is made to main branch
 
 on:
-  pull_request:
-    branches: 
-      - main
+  workflow_run:
+    workflows: ["MongoDB Setup"]
+    types: 
+      - completed
 
 permissions: 
   pull-requests: write 

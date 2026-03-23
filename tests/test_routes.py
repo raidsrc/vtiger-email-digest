@@ -11,3 +11,30 @@ testing idea: spin up a docker container containing a mongodb instance, populate
 
 i'm cooking
 """
+
+from app.routers.actions import add_project_to_queue
+from app.class_types import ProjectRequestBody
+
+
+def test_something():
+    # this should fail rn because environment variables are not defined
+    args1 = {
+        "projectstatus": "status",
+        "cf_project_activities": "Started",
+        "projectname": "Started Project 123",
+        "cf_project_clonename": "",
+        "cf_project_lotnumber": "",
+        "project_no": "",
+        "cf_project_quotenumber": "",
+        "description": "",
+        "cf_project_aavname": "",
+        "behind_schedule": "",
+        "modifiedtime": "",
+    }
+    p1 = ProjectRequestBody(*args1)
+    return1 = add_project_to_queue(p1)
+    assert return1.get('success') == True 
+    assert return1.get('upserted') == False 
+    return_doc1 = return1.get("document_added_to_database")
+    assert return_doc1 is not None 
+    assert return_doc1.get("projectname") == "Started Project 123"
