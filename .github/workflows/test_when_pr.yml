@@ -1,32 +1,48 @@
-name: Run Pytest when a pull request is made to main branch
+name: Test
 
 on:
-  workflow_run:
-    workflows: [MongoDB Setup]
-    types: 
-      - completed
+  [push]
+  # pull_request:
+  #   branches:
+  #     - main
 
-permissions: 
-  pull-requests: write 
+permissions:
+  pull-requests: write
   actions: read
   contents: read
 
-jobs: 
+jobs:
+  start-mongo:
+    runs-on: ubuntu-latest
+    name: job that starts mongo server and imports test data
+    steps:
+      - name: checkout
+        uses: actions/checkout@v5
+
+      - name: start mongo in docker container
+        uses: supercharge/mongodb-github-action@1.12.1
+
+      - name: install mongodb database tools
+        run: |
+          wget https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
+          sudo apt install ./mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
+
+      - name: mongoimport testing data
+        run: mongoimport --collection="devProjectQueue" --jsonArray testing_seed.json
+
   run-python-tests:
     runs-on: ubuntu-latest
 
     steps:
       - name: checkout code
-        uses: actions/checkout@v4 
+        uses: actions/checkout@v4
 
-      - name: set up python 
-        uses: actions/setup-python@v4 
+      - name: set up python
+        uses: actions/setup-python@v4
 
-      - name: install deps 
-        run: | 
-          pip install -r requirements.txt 
+      - name: install deps
+        run: |
+          pip install -r requirements.txt
 
-      - name: run tests 
+      - name: run tests
         run: pytest
-
-      
