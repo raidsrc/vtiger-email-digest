@@ -57,14 +57,10 @@ jobs:
         uses: actions/setup-python@v4
 
       - name: install deps
-        run: |
-          pip install -r requirements.txt
-
-      - name: load env vars
-        run: python -c "import dotenv; dotenv.load_dotenv()"
+        run: pip install -r requirements.txt
 
       - name: test that env vars are available
-        run: python -c "import os; print(os.environ.get("MONGO_URI_PREFIX"))"
+        run: python -c "import os; print(os.environ)"
 
       - name: run tests
         run: pytest
