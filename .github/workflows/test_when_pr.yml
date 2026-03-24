@@ -23,9 +23,10 @@ jobs:
 
       - name: start mongodb in docker container
         uses: supercharge/mongodb-github-action@1.12.1
-        # with:
-        #   mongodb-username: ${{vars.MONGO_USERNAME}}
-        #   mongodb-password: ${{secrets.MONGO_PASSWORD}}
+        with:
+          mongodb-username: ${{vars.MONGO_USERNAME}}
+          mongodb-password: ${{secrets.MONGO_PASSWORD}}
+          mongodb-db: vtigerEmailDigestDatabase
 
       - name: install mongodb database tools
         run: |
@@ -33,7 +34,7 @@ jobs:
           sudo apt install ./mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
 
       - name: mongoimport testing data
-        run: mongoimport --collection="devProjectQueue" --jsonArray testing_seed.json
+        run: mongoimport --collection="devProjectQueue" --username ${{vars.MONGO_USERNAME}} --password ${{secrets.MONGO_PASSWORD}} --jsonArray testing_seed.json
 
   run-python-tests:
     runs-on: ubuntu-latest
