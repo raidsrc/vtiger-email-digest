@@ -16,9 +16,6 @@ jobs:
     name: job that starts mongo server and imports test data
     runs-on: ubuntu-latest
     environment: for my testing workflow
-    env:
-      MONGO_USERNAME: ${{vars.MONGO_USERNAME}}
-      MONGO_PASSWORD: ${{secrets.MONGO_PASSWORD}}
 
     steps:
       - name: checkout
@@ -26,9 +23,9 @@ jobs:
 
       - name: start mongodb in docker container
         uses: supercharge/mongodb-github-action@1.12.1
-        with:
-          mongodb-username: ${{vars.MONGO_USERNAME}}
-          mongodb-password: ${{secrets.MONGO_PASSWORD}}
+        # with:
+        #   mongodb-username: ${{vars.MONGO_USERNAME}}
+        #   mongodb-password: ${{secrets.MONGO_PASSWORD}}
 
       - name: install mongodb database tools
         run: |
