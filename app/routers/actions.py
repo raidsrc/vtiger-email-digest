@@ -39,11 +39,17 @@ if QUEUE_COLLECTION == "":
 if TRASH_COLLECTION == "":
     raise Exception("TRASH_COLLECTION missing")
 
+print("======== VTIGER EMAIL DIGEST SERVER ========")
+print("environment variables loaded successfully.")
+
 uri = f"{MONGO_URI_PREFIX}{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_URI_ADDRESS}"
 client: MongoClient[ProjectWrapperMongo] = MongoClient(uri)
 db: Database[ProjectWrapperMongo] = client[MONGO_DB_NAME]
 db_queue_collection = db[QUEUE_COLLECTION]
 db_trash_collection = db[TRASH_COLLECTION]
+
+print("======== VTIGER EMAIL DIGEST SERVER ========")
+print("database loaded successfully.")
 
 EMAIL_SETTINGS_RECIPIENTS = os.getenv("EMAIL_SETTINGS_RECIPIENTS") or ""
 EMAIL_SETTINGS_CC = os.getenv("EMAIL_SETTINGS_CC") or ""
