@@ -61,7 +61,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: load env vars ?
-        run: echo ${{ EMAIL_SETTINGS_RECIPIENTS }}
+        run: echo ${{ vars.EMAIL_SETTINGS_RECIPIENTS }}
 
       - name: test that env vars are available
         run: python -c "import os; print(os.environ.get("MONGO_URI_PREFIX"))"
