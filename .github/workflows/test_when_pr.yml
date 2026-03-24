@@ -60,8 +60,8 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: load env vars ?
-        run: echo ${{ vars.EMAIL_SETTINGS_RECIPIENTS }}
+      - name: load env vars
+        run: python -c "import dotenv; dotenv.load_dotenv()"
 
       - name: test that env vars are available
         run: python -c "import os; print(os.environ.get("MONGO_URI_PREFIX"))"
