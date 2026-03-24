@@ -21,6 +21,7 @@ MONGO_URI_PREFIX = os.getenv("MONGO_URI_PREFIX") or ""
 MONGO_URI_ADDRESS = os.getenv("MONGO_URI_ADDRESS") or ""
 MONGO_USERNAME = os.getenv("MONGO_USERNAME") or ""
 MONGO_PASSWORD = os.getenv("MONGO_PASSWORD") or ""
+MONGO_DB_NAME = os.getenv("MONGO_DB_NAME") or ""
 QUEUE_COLLECTION = os.getenv("QUEUE_COLLECTION") or ""
 TRASH_COLLECTION = os.getenv("TRASH_COLLECTION") or ""
 if MONGO_URI_PREFIX == "":
@@ -31,6 +32,8 @@ if MONGO_USERNAME == "":
     raise Exception("MONGO_USERNAME missing")
 if MONGO_PASSWORD == "":
     raise Exception("MONGO_PASSWORD missing")
+if MONGO_DB_NAME == "":
+    raise Exception("MONGO_DB_NAME missing")
 if QUEUE_COLLECTION == "":
     raise Exception("QUEUE_COLLECTION missing")
 if TRASH_COLLECTION == "":
@@ -38,7 +41,7 @@ if TRASH_COLLECTION == "":
 
 uri = f"{MONGO_URI_PREFIX}{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_URI_ADDRESS}"
 client: MongoClient[ProjectWrapperMongo] = MongoClient(uri)
-db: Database[ProjectWrapperMongo] = client["vtigerEmailDigestDatabase"]
+db: Database[ProjectWrapperMongo] = client[MONGO_DB_NAME]
 db_queue_collection = db[QUEUE_COLLECTION]
 db_trash_collection = db[TRASH_COLLECTION]
 
