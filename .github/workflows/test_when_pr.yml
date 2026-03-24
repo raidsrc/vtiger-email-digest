@@ -12,27 +12,27 @@ permissions:
   contents: read
 
 jobs:
-  # start-mongo:
-  #   runs-on: ubuntu-latest
-  #   name: job that starts mongo server and imports test data
-  #   steps:
-  #     - name: checkout
-  #       uses: actions/checkout@v5
+  start-mongo:
+    runs-on: ubuntu-latest
+    name: job that starts mongo server and imports test data
+    steps:
+      - name: checkout
+        uses: actions/checkout@v5
 
-  #     - name: start mongo in docker container
-  #       uses: supercharge/mongodb-github-action@1.12.1
+      - name: start mongo in docker container
+        uses: supercharge/mongodb-github-action@1.12.1
 
-  #     - name: install mongodb database tools
-  #       run: |
-  #         wget https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
-  #         sudo apt install ./mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
+      - name: install mongodb database tools
+        run: |
+          wget https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
+          sudo apt install ./mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
 
-  #     - name: mongoimport testing data
-  #       run: mongoimport --collection="devProjectQueue" --jsonArray testing_seed.json
+      - name: mongoimport testing data
+        run: mongoimport --collection="devProjectQueue" --jsonArray testing_seed.json
 
   run-python-tests:
     runs-on: ubuntu-latest
-    # needs: start-mongo
+    needs: start-mongo
     environment: for my testing workflow
     env:
       EMAIL_SETTINGS_RECIPIENTS: ${{vars.EMAIL_SETTINGS_RECIPIENTS}}
@@ -58,9 +58,6 @@ jobs:
 
       - name: install deps
         run: pip install -r requirements.txt
-
-      - name: test that env vars are available
-        run: python -c "import os; print(os.environ)"
 
       - name: run tests
         run: pytest

@@ -17,7 +17,6 @@ from app.class_types import ProjectRequestBody
 
 
 def test_something():
-    # this should fail rn because environment variables are not defined
     args1 = {
         "projectstatus": "status",
         "cf_project_activities": "Started",
@@ -31,10 +30,10 @@ def test_something():
         "behind_schedule": "",
         "modifiedtime": "",
     }
-    p1 = ProjectRequestBody(*args1)
+    p1 = ProjectRequestBody(**args1)
     return1 = add_project_to_queue(p1)
     assert return1.get('success') == True 
     assert return1.get('upserted') == False 
     return_doc1 = return1.get("document_added_to_database")
-    assert return_doc1 is not None 
-    assert return_doc1.get("projectname") == "Started Project 123"
+    assert return_doc1 is not None
+    assert return_doc1["project"]["projectname"] == "Started Project 123"
