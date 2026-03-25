@@ -12,33 +12,9 @@ permissions:
   contents: read
 
 jobs:
-  start-mongo:
-    name: job that starts mongo server and imports test data
+  test-job:
+    name: start mongo server, import test data, run tests
     runs-on: ubuntu-latest
-    environment: for my testing workflow
-
-    steps:
-      - name: checkout
-        uses: actions/checkout@v5
-
-      - name: start mongodb in docker container
-        uses: supercharge/mongodb-github-action@1.12.1
-        with:
-          mongodb-username: ${{vars.MONGO_USERNAME}}
-          mongodb-password: ${{secrets.MONGO_PASSWORD}}
-          mongodb-db: vtigerEmailDigestDatabase
-
-      - name: install mongodb database tools
-        run: |
-          wget https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
-          sudo apt install ./mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
-
-      - name: mongoimport testing data
-        run: mongoimport --db=${{vars.MONGO_DB_NAME}} --collection=${{vars.QUEUE_COLLECTION}} --username=${{vars.MONGO_USERNAME}} --password=${{secrets.MONGO_PASSWORD}} --jsonArray --authenticationDatabase=admin testing_seed.json
-
-  run-python-tests:
-    runs-on: ubuntu-latest
-    needs: start-mongo
     environment: for my testing workflow
     env:
       EMAIL_SETTINGS_RECIPIENTS: ${{vars.EMAIL_SETTINGS_RECIPIENTS}}
@@ -57,8 +33,23 @@ jobs:
       VT_ACCESSKEY: ${{secrets.VT_ACCESSKEY}}
 
     steps:
-      - name: checkout code
+      - name: checkout repo
         uses: actions/checkout@v5
+
+      - name: start mongodb in docker container
+        uses: supercharge/mongodb-github-action@1.12.1
+        with:
+          mongodb-username: ${{vars.MONGO_USERNAME}}
+          mongodb-password: ${{secrets.MONGO_PASSWORD}}
+          mongodb-db: vtigerEmailDigestDatabase
+
+      - name: install mongodb database tools
+        run: |
+          wget https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
+          sudo apt install ./mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
+
+      - name: mongoimport testing data
+        run: mongoimport --db=${{vars.MONGO_DB_NAME}} --collection=${{vars.QUEUE_COLLECTION}} --username=${{vars.MONGO_USERNAME}} --password=${{secrets.MONGO_PASSWORD}} --jsonArray --authenticationDatabase=admin testing_seed.json
 
       - name: set up python
         uses: actions/setup-python@v4
