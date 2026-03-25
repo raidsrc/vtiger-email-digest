@@ -17,10 +17,18 @@ from app.helper import (
     convert_UTC_to_houston,
 )
 
-
+MONGO_URI_PREFIX = os.getenv("MONGO_URI_PREFIX") or ""
+MONGO_URI_ADDRESS = os.getenv("MONGO_URI_ADDRESS") or ""
+MONGO_USERNAME = os.getenv("MONGO_USERNAME") or ""
 MONGO_PASSWORD = os.getenv("MONGO_PASSWORD") or ""
 QUEUE_COLLECTION = os.getenv("QUEUE_COLLECTION") or ""
 TRASH_COLLECTION = os.getenv("TRASH_COLLECTION") or ""
+if MONGO_URI_PREFIX == "":
+    raise Exception("MONGO_URI_PREFIX missing")
+if MONGO_URI_ADDRESS == "":
+    raise Exception("MONGO_URI_ADDRESS missing")
+if MONGO_USERNAME == "":
+    raise Exception("MONGO_USERNAME missing")
 if MONGO_PASSWORD == "":
     raise Exception("MONGO_PASSWORD missing")
 if QUEUE_COLLECTION == "":
@@ -28,7 +36,7 @@ if QUEUE_COLLECTION == "":
 if TRASH_COLLECTION == "":
     raise Exception("TRASH_COLLECTION missing")
 
-uri = f"mongodb+srv://admin:{MONGO_PASSWORD}@cluster0.ps7aafk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+uri = f"{MONGO_URI_PREFIX}{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_URI_ADDRESS}"
 client: MongoClient[ProjectWrapperMongo] = MongoClient(uri)
 db: Database[ProjectWrapperMongo] = client["vtigerEmailDigestDatabase"]
 db_queue_collection = db[QUEUE_COLLECTION]
@@ -47,23 +55,22 @@ actions_router = APIRouter(dependencies=[Depends(get_current_username)])
 @actions_router.get("/projects/queue")
 def view_queue(
     emailed_about: int | None = None,
+    behind_schedule: bool | None = None,
 ):
     """
     view all projects currently in queue
+    default behavior is to get all projects
     if ?emailed_about=0 view all projects not emailed about yet
     if ?emailed_about=1 view all projects emailed about once
+    if ?behind_schedule=true view projects that are behind schedule
     """
     projects: list[ProjectWrapperMongo] = []
-    if emailed_about == 0:
-        projectsCursor = db_queue_collection.find(
-            {"emailed_about": 0}
-        )  # not emailed projects
-    elif emailed_about == 1:
-        projectsCursor = db_queue_collection.find(
-            {"emailed_about": 1}
-        )  # emailed 1x projects
-    else:
-        projectsCursor = db_queue_collection.find()  # all projects
+    query_filter = {}
+    if emailed_about is not None:
+        query_filter["emailed_about"] = emailed_about
+    if behind_schedule is not None:
+        query_filter["behind_schedule"] = behind_schedule
+    projectsCursor = db_queue_collection.find(query_filter)
 
     for project in projectsCursor:
         oid = str(project["_id"])
@@ -89,9 +96,16 @@ async def add_project_to_queue(project: ProjectRequestBody):
     UTC = ZoneInfo("UTC")
     now_utc = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
     now_houston_time = convert_UTC_to_houston(now_utc)
+    # be ready for behind_schedule coming from vtiger workflow to be a string or a bool or none.
+    behind_schedule = (
+        True
+        if project.behind_schedule == "true" or project.behind_schedule is True
+        else False
+    )
     document_to_insert = {
         "datetime_received": now_utc,
         "emailed_about": 0,
+        "behind_schedule": behind_schedule,
         "project": {
             "projectstatus": project.projectstatus or "",
             "cf_project_activities": project.cf_project_activities or "",
@@ -103,39 +117,64 @@ async def add_project_to_queue(project: ProjectRequestBody):
             "description": project.description or "",
             "cf_project_aavname": project.cf_project_aavname or "",
             "vtiger_email_digest_received_datetime_houston": now_houston_time,
+            "modifiedtime": project.modifiedtime or "",
         },
     }
-    db_queue_collection.insert_one(document_to_insert)  # type: ignore
-    document_to_insert["_id"] = str(document_to_insert["_id"])
+    # if behind schedule, upsert. if a behind schedule project with this project_no already exists in the queue, replace it with the new data. otherwise, it's new so insert as normal.
+    upserted: bool = False
+    if behind_schedule is True:
+        document_to_upsert = document_to_insert  # just so i'm clear on what it is.
+        # update the modified time with the new value sent from vt
+        document_to_upsert["project"]["modifiedtime"] = (
+            convert_UTC_to_houston(project.modifiedtime) or ""
+        )
+        # match project number and behind schedule
+        query_filter = {
+            "project.project_no": project.project_no,
+            "behind_schedule": True,
+        }
+        replace_return = db_queue_collection.replace_one(query_filter, document_to_upsert, upsert=True)  # type: ignore
+        # there is no did_upsert. for some reason the autocompletion and the pymongo docs are wrong.
+        # there is an updatedExisting property on the raw_result, though. using that.
+        raw_result = replace_return.raw_result
+        assert raw_result is not None
+        upserted = raw_result["updatedExisting"]
+    else:
+        db_queue_collection.insert_one(document_to_insert)  # type: ignore
+    # document_to_insert["_id"] = str(document_to_insert["_id"])
     response = {
         "success": True,
+        "upserted": upserted,
         "document_added_to_database": document_to_insert,
     }
     return response
 
 
 @actions_router.delete("/projects/queue")
-def clear_queue(emailed_about: int | None = None, all: bool = False):
+def clear_queue(
+    emailed_about: int | None = None,
+    all_projects: bool | None = None,
+    behind_schedule: bool | None = False,
+):
     """
     remove projects from queue. this means moving projects from projectQueue into projectQueueTrash.
     default behavior is to clear only the projects where emailed_about >= 2.
+    if all_projects is true, delete all projects
+    if behind_schedule is true, delete those that are behind schedule
     """
+
     projects: list[ProjectWrapperMongo] = []
-    if all == True:
-        projectsCursor = db_queue_collection.find()  # all projects
+    query_filter = {}
+    if emailed_about is not None:
+        query_filter["emailed_about"] = emailed_about
     else:
-        if emailed_about == 0:
-            projectsCursor = db_queue_collection.find(
-                {"emailed_about": 0}
-            )  # just arrived, not emailed projects
-        elif emailed_about == 1:
-            projectsCursor = db_queue_collection.find(
-                {"emailed_about": 1}
-            )  # emailed 1x projects
-        else:
-            projectsCursor = db_queue_collection.find(
-                {"emailed_about": {"$gte": 2}}
-            )  # emailed 2x projects
+        query_filter["emailed_about"] = {"$gte: 2"}
+    if behind_schedule is not None:
+        query_filter["behind_schedule"] = behind_schedule
+    if all_projects is True:
+        query_filter = {}
+
+    projectsCursor = db_queue_collection.find(query_filter)
 
     for project in projectsCursor:
         oid = str(project["_id"])
@@ -155,19 +194,7 @@ def clear_queue(emailed_about: int | None = None, all: bool = False):
         return response
 
     # otherwise, delete stuff
-    if all == True:
-        query_filter = {}
-        db_queue_collection.delete_many(query_filter)
-    else:
-        if emailed_about == 0:
-            query_filter = {"emailed_about": 0}
-            db_queue_collection.delete_many(query_filter)
-        elif emailed_about == 1:
-            query_filter = {"emailed_about": 1}
-            db_queue_collection.delete_many(query_filter)
-        else:
-            query_filter = {"emailed_about": {"$gte": 2}}
-            db_queue_collection.delete_many(query_filter)
+    db_queue_collection.delete_many(query_filter)
 
     # deletion finished, now to insert into trash collection
     db_trash_collection.insert_many(projects)
@@ -212,9 +239,23 @@ def trigger_email():
     projects = sorted(
         projects, key=lambda project: project["project"]["cf_project_activities"]
     )
-    new_projects = [p["project"] for p in projects if p["emailed_about"] == 0]
-    old_projects = [p["project"] for p in projects if p["emailed_about"] == 1]
-    # both lists are now sorted by activities
+    # get projects that are not behind schedule that have been emailed about 0 times or 1 time.
+    new_projects = [
+        p["project"]
+        for p in projects
+        if p.get("emailed_about") == 0 and p.get("behind_schedule") is not True
+        # use .get in dictionaries to avoid KeyError if it doesn't exist
+    ]
+    old_projects = [
+        p["project"]
+        for p in projects
+        if p.get("emailed_about") == 1 and p.get("behind_schedule") is not True
+    ]
+    # get projects that are behind schedule
+    behind_schedule_projects = [
+        p.get("project") for p in projects if p.get("behind_schedule") is True
+    ]
+    # lists are now sorted by activities
     # fetch updated data from vtiger on all the old projects, then add that data to those old projects
     for old_project in old_projects:
         full_data = get_project_info_from_vtiger_by_number(old_project["project_no"])
@@ -236,6 +277,8 @@ def trigger_email():
     new_dict = split_projects_list_by_activities(new_projects)
     old_dict = split_projects_list_by_activities(old_projects)
 
+    # as for the behind schedule projects: i'll just dump them all into a single table. there shouldn't be that many of them anyway. no further processing needed.
+
     # now send a req to tell postmark to send an email
     headers = {
         "Accept": "application/json",
@@ -247,7 +290,7 @@ def trigger_email():
         "To": EMAIL_SETTINGS_RECIPIENTS,
         "Cc": EMAIL_SETTINGS_CC,
         "MessageStream": "broadcast",
-        "TemplateAlias": "digest-template-1",
+        "TemplateAlias": "digest-template-2",
         "TemplateModel": {
             "today_nice": date.today().strftime("%A, %B %d, %Y"),
             "today_date": str(date.today()),
@@ -267,6 +310,8 @@ def trigger_email():
             "old_projects_assay": old_dict["assay"],
             "old_projects_other": old_dict["other"],
             "old_projects_count": len(old_projects),
+            "behind_schedule_projects": behind_schedule_projects,
+            "behind_schedule_projects_count": len(behind_schedule_projects),
         },
     }
     data = json.dumps(data)
@@ -298,5 +343,7 @@ def trigger_email():
         "old_projects_assay": old_dict["assay"],
         "old_projects_other": old_dict["other"],
         "old_projects_count": len(old_projects),
+        "behind_schedule_projects": behind_schedule_projects,
+        "behind_schedule_projects_count": len(behind_schedule_projects),
         "email_response": rbody,
     }

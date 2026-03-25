@@ -2,7 +2,7 @@ from typing import Dict, List, TypedDict
 from pydantic import BaseModel, Field
 
 
-# what's received from vtiger
+# what's received from vtiger when the webhook fires
 class ProjectRequestBody(BaseModel):
     projectstatus: str = ""
     cf_project_activities: str = ""
@@ -13,6 +13,8 @@ class ProjectRequestBody(BaseModel):
     cf_project_quotenumber: str = ""
     description: str = ""
     cf_project_aavname: str = ""
+    behind_schedule: str | bool | None = "false"
+    modifiedtime: str | None = None
 
 
 class Project(TypedDict):
@@ -39,7 +41,8 @@ class ProjectWrapperMongo(TypedDict):
     _id: str  # in the db it's an ObjectId. make sure to convert this to a string before returning in fastapi.
     project: Project
     datetime_received: str
-    timezone: str
+    timezone: str | None
+    behind_schedule: bool | None
     emailed_about: (
         int  # if a project is included in a digest email, this counter increments.
     )
