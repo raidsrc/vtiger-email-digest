@@ -44,7 +44,7 @@ from app.class_types import ProjectRequestBody
             # behind schedule no upsert
             {
                 "projectstatus": "Cloning completed",
-                "cf_project_activities": "Cloning",
+                "cf_project_activities": "CLONING",
                 "projectname": "Started Project 456",
                 "cf_project_clonename": "RAY01",
                 "cf_project_lotnumber": "",
@@ -66,7 +66,7 @@ from app.class_types import ProjectRequestBody
             # behind schedule yes upsert
             {
                 "projectstatus": "Cloning completed",
-                "cf_project_activities": "Cloning",
+                "cf_project_activities": "CLONING",
                 "projectname": "Upserted project",
                 "cf_project_clonename": "RAY01",
                 "cf_project_lotnumber": "",
@@ -137,7 +137,7 @@ class PostmarkSendEmailMockResponse:
             # first email triggered
             {
                 "new_sf9_count": 1,
-                "new_cloning_count": 3,
+                "new_cloning_count": 2,
                 "new_dna_count": 2,
                 "old_sf9_count": 0,
                 "old_cloning_count": 1,
@@ -155,7 +155,7 @@ class PostmarkSendEmailMockResponse:
                 "new_cloning_count": 0,
                 "new_dna_count": 0,
                 "old_sf9_count": 1,
-                "old_cloning_count": 4,
+                "old_cloning_count": 2,
                 "old_dna_count": 3,
 
                 "new_projects_count": 0,

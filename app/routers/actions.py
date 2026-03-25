@@ -75,9 +75,9 @@ def view_queue(
     """
     projects: list[ProjectWrapperMongo] = []
     query_filter = {}
-    if emailed_about is not None:
+    if emailed_about != None:
         query_filter["emailed_about"] = emailed_about
-    if behind_schedule is not None:
+    if behind_schedule != None:
         query_filter["behind_schedule"] = behind_schedule
     projectsCursor = db_queue_collection.find(query_filter)
 
@@ -131,7 +131,7 @@ def add_project_to_queue(project: ProjectRequestBody):
     }
     # if behind schedule, upsert. if a behind schedule project with this project_no already exists in the queue, replace it with the new data. otherwise, it's new so insert as normal.
     upserted: bool = False
-    if behind_schedule is True:
+    if behind_schedule == True:
         document_to_upsert = document_to_insert  # just so i'm clear on what it is.
         # update the modified time with the new value sent from vt
         document_to_upsert["project"]["modifiedtime"] = (
@@ -146,7 +146,7 @@ def add_project_to_queue(project: ProjectRequestBody):
         # there is no did_upsert. for some reason the autocompletion and the pymongo docs are wrong.
         # there is an updatedExisting property on the raw_result, though. using that.
         raw_result = replace_return.raw_result
-        assert raw_result is not None
+        assert raw_result != None
         upserted = raw_result["updatedExisting"]
     else:
         db_queue_collection.insert_one(document_to_insert)  # type: ignore
@@ -174,13 +174,13 @@ def clear_queue(
 
     projects: list[ProjectWrapperMongo] = []
     query_filter = {}
-    if emailed_about is not None:
+    if emailed_about != None:
         query_filter["emailed_about"] = emailed_about
     else:
         query_filter["emailed_about"] = {"$gte: 2"}
-    if behind_schedule is not None:
+    if behind_schedule != None:
         query_filter["behind_schedule"] = behind_schedule
-    if all_projects is True:
+    if all_projects == True:
         query_filter = {}
 
     projectsCursor = db_queue_collection.find(query_filter)
@@ -252,23 +252,23 @@ def trigger_email():
     new_projects = [
         p["project"]
         for p in projects
-        if p.get("emailed_about") == 0 and p.get("behind_schedule") is not True
+        if p.get("emailed_about") == 0 and p.get("behind_schedule") != True
         # use .get in dictionaries to avoid KeyError if it doesn't exist
     ]
     old_projects = [
         p["project"]
         for p in projects
-        if p.get("emailed_about") == 1 and p.get("behind_schedule") is not True
+        if p.get("emailed_about") == 1 and p.get("behind_schedule") != True
     ]
     # get projects that are behind schedule
     behind_schedule_projects = [
-        p.get("project") for p in projects if p.get("behind_schedule") is True
+        p.get("project") for p in projects if p.get("behind_schedule") == True
     ]
     # lists are now sorted by activities
     # fetch updated data from vtiger on all the old projects, then add that data to those old projects
     for old_project in old_projects:
         full_data = get_project_info_from_vtiger_by_number(old_project["project_no"])
-        if full_data is None:  # if no project data came back
+        if full_data == None:  # if no project data came back
             continue  # skip it whatever
         # update fields with new data
         old_project["projectstatus"] = full_data["projectstatus"]
