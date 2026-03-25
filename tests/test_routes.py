@@ -75,7 +75,7 @@ def test_add_project_to_queue_3():
         "cf_project_quotenumber": "",
         "description": "",
         "cf_project_aavname": "",
-        "behind_schedule": False,
+        "behind_schedule": True,
         "modifiedtime": "2001-01-01 13:00:00",
     }
     p = ProjectRequestBody(**args)

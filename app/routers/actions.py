@@ -108,7 +108,7 @@ def add_project_to_queue(project: ProjectRequestBody):
     # be ready for behind_schedule coming from vtiger workflow to be a string or a bool or none.
     behind_schedule = (
         True
-        if project.behind_schedule == "true" or project.behind_schedule is True
+        if project.behind_schedule == "true" or project.behind_schedule == True
         else False
     )
     document_to_insert = {
