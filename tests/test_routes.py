@@ -143,7 +143,7 @@ class PostmarkSendEmailMockResponse:
                 "old_cloning_count": 1,
                 "old_dna_count": 1,
 
-                "new_projects_count": 10,
+                "new_projects_count": 8,
                 "old_projects_count": 6,
                 "emailed_about_2_count": 0,
             }
@@ -155,7 +155,7 @@ class PostmarkSendEmailMockResponse:
                 "new_cloning_count": 0,
                 "new_dna_count": 0,
                 "old_sf9_count": 1,
-                "old_cloning_count": 2,
+                "old_cloning_count": 3,
                 "old_dna_count": 3,
 
                 "new_projects_count": 0,
