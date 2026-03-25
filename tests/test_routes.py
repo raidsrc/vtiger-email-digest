@@ -58,7 +58,7 @@ from app.class_types import ProjectRequestBody
                 "upserted": False,
                 "behind_schedule": True,
                 "project_name": "Started Project 456",
-                "modified_time": "2000-01-01 13:00:00",
+                "modified_time": "2000-01-01 07:00:00", # because it converts from utc to houston time. remember.
             },
         ),
         (
