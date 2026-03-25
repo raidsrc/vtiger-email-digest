@@ -6,7 +6,7 @@
     "behind_schedule": true,
     "project": {
       "projectstatus": "Started",
-      "cf_project_activities": "Cloning",
+      "cf_project_activities": "CLONING",
       "projectname": "some cloning project 1",
       "cf_project_clonename": "RAY1",
       "cf_project_lotnumber": "329874578932-9999",
@@ -88,7 +88,7 @@
     "timezone": "UTC",
     "project": {
       "projectstatus": "Started",
-      "cf_project_activities": "Cloning",
+      "cf_project_activities": "CLONING",
       "projectname": "some cloning project 2",
       "cf_project_clonename": "RAY0123",
       "cf_project_lotnumber": "019273",
@@ -120,7 +120,7 @@
     "emailed_about": 0,
     "project": {
       "projectstatus": "Started",
-      "cf_project_activities": "Cloning",
+      "cf_project_activities": "CLONING",
       "projectname": "some other cloning?",
       "cf_project_clonename": "RAY0123",
       "cf_project_lotnumber": "99-9999",
@@ -185,7 +185,7 @@
     "emailed_about": 1,
     "project": {
       "projectstatus": "Started",
-      "cf_project_activities": "Cloning",
+      "cf_project_activities": "CLONING",
       "projectname": "some cloning project 1",
       "cf_project_clonename": "RAY1",
       "cf_project_lotnumber": "329874578932-9999",
