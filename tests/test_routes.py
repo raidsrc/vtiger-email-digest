@@ -85,11 +85,20 @@ from app.class_types import ProjectRequestBody
 def test_add_project_to_queue(input_project, results_to_check):
     p = ProjectRequestBody(**input_project)
     add_response = add_project_to_queue(p)
-    assert add_response.get("success") == True
-    assert add_response.get("upserted") == results_to_check.get("upserted")
-    assert add_response.get("behind_schedule") == results_to_check.get("behind_schedule")
-    assert add_response["project"]["projectname"] == results_to_check.get("project_name")
-    assert add_response["project"]["modifiedtime"] == results_to_check.get("modified_time")
+    assert add_response["success"] == True
+    assert add_response["upserted"] == results_to_check["upserted"]
+    assert (
+        add_response["document_added_to_database"]["behind_schedule"]
+        == results_to_check["behind_schedule"]
+    )
+    assert (
+        add_response["document_added_to_database"]["project"]["projectname"]
+        == results_to_check["project_name"]
+    )
+    assert (
+        add_response["document_added_to_database"]["project"]["modifiedtime"]
+        == results_to_check["modified_time"]
+    )
 
 
 def test_add_project_to_queue_1():
