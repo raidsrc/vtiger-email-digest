@@ -86,6 +86,7 @@
   {
     "datetime_received": "2026-01-28 19:33:48.987654",
     "timezone": "UTC",
+    "emailed_about": 0,
     "project": {
       "projectstatus": "Started",
       "cf_project_activities": "CLONING",

@@ -37,7 +37,7 @@ from app.class_types import ProjectRequestBody
                 "upserted": False,
                 "behind_schedule": False,
                 "project_name": "Started Project 123",
-                "modified_time": "",
+                "modified_time": "100000",
             },
         ),
         (
@@ -108,7 +108,10 @@ def test_add_project_to_queue(input_project, results_to_check):
 class VtigerGetSingleProjectInfoByProjectNumberMockResponse:
     @staticmethod
     def json():
-        return None
+        return {
+            "success": True,
+            "result": []
+        }
 
     @staticmethod
     def raise_for_status():
@@ -133,9 +136,13 @@ class PostmarkSendEmailMockResponse:
         (
             # first email triggered
             {
-                "sf9_count": 1,
-                "cloning_count": 5,
-                "dna_count": 4,
+                "new_sf9_count": 1,
+                "new_cloning_count": 3,
+                "new_dna_count": 2,
+                "old_sf9_count": 0,
+                "old_cloning_count": 1,
+                "old_dna_count": 1,
+
                 "new_projects_count": 10,
                 "old_projects_count": 6,
                 "emailed_about_2_count": 0,
@@ -144,9 +151,13 @@ class PostmarkSendEmailMockResponse:
         (
             # second email triggered
             {
-                "sf9_count": 1,
-                "cloning_count": 5,
-                "dna_amount": 4,
+                "new_sf9_count": 0,
+                "new_cloning_count": 0,
+                "new_dna_count": 0,
+                "old_sf9_count": 1,
+                "old_cloning_count": 4,
+                "old_dna_count": 3,
+
                 "new_projects_count": 0,
                 "old_projects_count": 10,
                 "emailed_about_2_count": 6,
@@ -172,9 +183,14 @@ def test_trigger_email(monkeypatch, results_to_check):
 
     trigger_email_response = trigger_email()
     assert trigger_email_response["email_response"]["ErrorCode"] == 0
-    assert len(trigger_email_response["new_projects_sf9"]) == results_to_check["sf9_count"]
-    assert len(trigger_email_response["new_projects_cloning"]) == results_to_check["cloning_count"]
-    assert len(trigger_email_response["new_projects_dna"]) == results_to_check["dna_count"]
+    assert len(trigger_email_response["new_projects_sf9"]) == results_to_check["new_sf9_count"]
+    assert len(trigger_email_response["new_projects_cloning"]) == results_to_check["new_cloning_count"]
+    assert len(trigger_email_response["new_projects_dna"]) == results_to_check["new_dna_count"]
+    assert len(trigger_email_response["old_projects_sf9"]) == results_to_check["old_sf9_count"]
+    assert len(trigger_email_response["old_projects_cloning"]) == results_to_check["old_cloning_count"]
+    assert len(trigger_email_response["old_projects_dna"]) == results_to_check["old_dna_count"]
+
+
     assert trigger_email_response["new_projects_count"] == results_to_check["new_projects_count"]
     assert trigger_email_response["old_projects_count"] == results_to_check["old_projects_count"]
     assert trigger_email_response["emailed_about_2_count"] == results_to_check["emailed_about_2_count"]
