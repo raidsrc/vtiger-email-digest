@@ -1,31 +1,60 @@
-name: Run Pytest when a pull request is made to main branch
+name: Test
 
 on:
   pull_request:
-    branches: 
+    branches:
       - main
 
-permissions: 
-  pull-requests: write 
+permissions:
+  pull-requests: write
   actions: read
   contents: read
 
-jobs: 
-  run-python-tests:
+jobs:
+  test-job:
+    name: start mongo server, import test data, run tests
     runs-on: ubuntu-latest
+    environment: for my testing workflow
+    env:
+      EMAIL_SETTINGS_RECIPIENTS: ${{vars.EMAIL_SETTINGS_RECIPIENTS}}
+      EMAIL_SETTINGS_CC: ${{vars.EMAIL_SETTINGS_CC}}
+      POSTMARK_SERVER_TOKEN: ${{secrets.POSTMARK_SERVER_TOKEN}}
+      MONGO_URI_PREFIX: ${{vars.MONGO_URI_PREFIX}}
+      MONGO_URI_ADDRESS: ${{vars.MONGO_URI_ADDRESS}}
+      MONGO_USERNAME: ${{vars.MONGO_USERNAME}}
+      MONGO_PASSWORD: ${{secrets.MONGO_PASSWORD}}
+      MONGO_DB_NAME: ${{vars.MONGO_DB_NAME}}
+      QUEUE_COLLECTION: ${{vars.QUEUE_COLLECTION}}
+      TRASH_COLLECTION: ${{vars.TRASH_COLLECTION}}
+      BASIC_AUTH_USER: ${{vars.BASIC_AUTH_USER}}
+      BASIC_AUTH_PASS: ${{secrets.BASIC_AUTH_PASS}}
+      VT_USER: ${{vars.VT_USER}}
+      VT_ACCESSKEY: ${{secrets.VT_ACCESSKEY}}
 
     steps:
-      - name: checkout code
-        uses: actions/checkout@v4 
+      - name: checkout repo
+        uses: actions/checkout@v5
 
-      - name: set up python 
-        uses: actions/setup-python@v4 
+      - name: start mongodb in docker container
+        uses: supercharge/mongodb-github-action@1.12.1
+        with:
+          mongodb-username: ${{vars.MONGO_USERNAME}}
+          mongodb-password: ${{secrets.MONGO_PASSWORD}}
+          mongodb-db: vtigerEmailDigestDatabase
 
-      - name: install deps 
-        run: | 
-          pip install -r requirements.txt 
+      - name: install mongodb database tools
+        run: |
+          wget https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
+          sudo apt install ./mongodb-database-tools-ubuntu2404-x86_64-100.15.0.deb
 
-      - name: run tests 
+      - name: mongoimport testing data
+        run: mongoimport --db=${{vars.MONGO_DB_NAME}} --collection=${{vars.QUEUE_COLLECTION}} --username=${{vars.MONGO_USERNAME}} --password=${{secrets.MONGO_PASSWORD}} --jsonArray --authenticationDatabase=admin testing_seed.json
+
+      - name: set up python
+        uses: actions/setup-python@v4
+
+      - name: install deps
+        run: pip install -r requirements.txt
+
+      - name: run tests
         run: pytest
-
-      

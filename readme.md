@@ -15,3 +15,9 @@ delete route for clearing queue
 http basic auth secures the important endpoints. email, auth, and db are configured via .env
 
 technology used: fastapi, mongodb atlas, postmark, vtiger workflows/webhooks, a bunch of other stuff
+
+# automated testing
+
+github actions for automated testing. starts a mongodb server in a docker container and runs tests using it.
+pytest for testing.
+you shouldn't need to run tests locally. aka please don't run tests locally. 
