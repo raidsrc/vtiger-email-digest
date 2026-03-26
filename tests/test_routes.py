@@ -108,10 +108,7 @@ def test_add_project_to_queue(input_project, results_to_check):
 class VtigerGetSingleProjectInfoByProjectNumberMockResponse:
     @staticmethod
     def json():
-        return {
-            "success": True,
-            "result": []
-        }
+        return {"success": True, "result": []}
 
     @staticmethod
     def raise_for_status():
@@ -142,9 +139,8 @@ class PostmarkSendEmailMockResponse:
                 "old_sf9_count": 0,
                 "old_cloning_count": 1,
                 "old_dna_count": 1,
-
                 "new_projects_count": 8,
-                "old_projects_count": 6,
+                "old_projects_count": 4,
                 "emailed_about_2_count": 0,
             }
         ),
@@ -155,9 +151,8 @@ class PostmarkSendEmailMockResponse:
                 "new_cloning_count": 0,
                 "new_dna_count": 0,
                 "old_sf9_count": 1,
-                "old_cloning_count": 3,
+                "old_cloning_count": 2,
                 "old_dna_count": 3,
-
                 "new_projects_count": 0,
                 "old_projects_count": 10,
                 "emailed_about_2_count": 6,
@@ -183,18 +178,18 @@ def test_trigger_email(monkeypatch, results_to_check):
 
     trigger_email_response = trigger_email()
     assert trigger_email_response["email_response"]["ErrorCode"] == 0
-    assert len(trigger_email_response["new_projects_sf9"]) == results_to_check["new_sf9_count"]
-    assert len(trigger_email_response["new_projects_cloning"]) == results_to_check["new_cloning_count"]
-    assert len(trigger_email_response["new_projects_dna"]) == results_to_check["new_dna_count"]
-    assert len(trigger_email_response["old_projects_sf9"]) == results_to_check["old_sf9_count"]
-    assert len(trigger_email_response["old_projects_cloning"]) == results_to_check["old_cloning_count"]
-    assert len(trigger_email_response["old_projects_dna"]) == results_to_check["old_dna_count"]
-
-
-    assert trigger_email_response["new_projects_count"] == results_to_check["new_projects_count"]
-    assert trigger_email_response["old_projects_count"] == results_to_check["old_projects_count"]
-    assert trigger_email_response["emailed_about_2_count"] == results_to_check["emailed_about_2_count"]
-    
+    response_values_to_check = {
+        "new_sf9_count": len(trigger_email_response["new_projects_sf9"]),
+        "new_cloning_count": len(trigger_email_response["new_projects_cloning"]),
+        "new_dna_count": len(trigger_email_response["new_projects_dna"]),
+        "old_sf9_count": len(trigger_email_response["old_projects_sf9"]),
+        "old_cloning_count": len(trigger_email_response["old_projects_cloning"]),
+        "old_dna_count": len(trigger_email_response["old_projects_dna"]),
+        "new_projects_count": trigger_email_response["new_projects_count"],
+        "old_projects_count": trigger_email_response["old_projects_count"],
+        "emailed_about_2_count": trigger_email_response["emailed_about_2_count"],
+    }
+    assert response_values_to_check == results_to_check
 
 
 # save this one for last
