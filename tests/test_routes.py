@@ -1,14 +1,3 @@
-"""
-imma keep it 100, this app is so small. i'm not gonna bother writing tests for the routes. i'm very sure that they work. plus then i'd have to do testing with the database and either mock the db calls or set up a temporary docker container with mongodb running for testing and that would mean i'd have to rewrite my routes to put another layer of abstraction between my app and the db calls and i'm NOT DOING THAT!
-"""
-
-"""
-wait a sec
-testing idea: spin up a docker container containing a mongodb instance, populate it with sample data, give env vars to the app to make it connect to that instance, run it in github actions, run tests, destroy everything when done
-
-i'm cooking
-"""
-
 from pymongo.collection import Collection
 from pymongo.database import Database
 import pytest
@@ -25,13 +14,9 @@ import json
 def mock_post(*args, **kwargs):
     return PostmarkSendEmailMockResponse()
 
-    monkeypatch.setattr(requests, "post", mock_post)
-
 
 def mock_get(*args, **kwargs):
     return VtigerGetSingleProjectInfoByProjectNumberMockResponse()
-
-    monkeypatch.setattr(requests, "get", mock_get)
 
 
 class VtigerGetSingleProjectInfoByProjectNumberMockResponse:
@@ -155,7 +140,11 @@ def database_setup():
         ),
     ],
 )
-def test_add_project_to_queue(input_project, results_to_check, database_setup):
+def test_add_project_to_queue(
+    input_project, results_to_check, database_setup, monkeypatch
+):
+    monkeypatch.setattr(requests, "post", mock_post)
+    monkeypatch.setattr(requests, "get", mock_get)
     p = ProjectRequestBody(**input_project)
     add_response = add_project_to_queue(p)
     assert add_response["success"] == True
@@ -177,13 +166,19 @@ def test_add_project_to_queue(input_project, results_to_check, database_setup):
     db_queue_collection: Collection[ProjectWrapperMongo] = db_dict[
         "db_queue_collection"
     ]
-    found_document = db_queue_collection.find_one({"project.projectname": results_to_check["project_name"]})
-    assert found_document != None 
+    found_document = db_queue_collection.find_one(
+        {"project.projectname": results_to_check["project_name"]}
+    )
+    assert found_document != None
     assert found_document["project"]["projectname"] == results_to_check["project_name"]
-    assert found_document["project"]["modifiedtime"] == results_to_check["modified_time"]
+    assert (
+        found_document["project"]["modifiedtime"] == results_to_check["modified_time"]
+    )
 
 
-def test_trigger_one_email(database_setup):
+def test_trigger_one_email(database_setup, monkeypatch):
+    monkeypatch.setattr(requests, "post", mock_post)
+    monkeypatch.setattr(requests, "get", mock_get)
     trigger_email_response = trigger_email()
     assert trigger_email_response["email_response"]["ErrorCode"] == 0
     results_to_check = {
@@ -213,8 +208,10 @@ def test_trigger_one_email(database_setup):
     assert response_values_to_check == results_to_check
 
 
-def test_trigger_two_emails(database_setup):
+def test_trigger_two_emails(database_setup, monkeypatch):
     """test sending two emails in succession to ensure that the emailed_about gets incremented properly."""
+    monkeypatch.setattr(requests, "post", mock_post)
+    monkeypatch.setattr(requests, "get", mock_get)
     trigger_email_response_1 = trigger_email()
     trigger_email_response_2 = trigger_email()
     assert trigger_email_response_2["email_response"]["ErrorCode"] == 0
@@ -290,8 +287,10 @@ def test_trigger_two_emails(database_setup):
         ),
     ],
 )
-def test_clear_queue_alone(database_setup, query_params, results_to_check):
+def test_clear_queue_alone(database_setup, query_params, results_to_check, monkeypatch):
     """test clearing the queue without triggering an email beforehand"""
+    monkeypatch.setattr(requests, "post", mock_post)
+    monkeypatch.setattr(requests, "get", mock_get)
     delete_response = clear_queue(
         query_params["emailed_about"],
         query_params["all_projects"],
@@ -301,6 +300,20 @@ def test_clear_queue_alone(database_setup, query_params, results_to_check):
         len(delete_response["documents_trashed"])
         == results_to_check["documents_trashed_count"]
     )
+    # check the db to ensure these documents are gone and that they wound up in the trash collection
+    db_dict = database_setup()
+    db_queue_collection: Collection[ProjectWrapperMongo] = db_dict[
+        "db_queue_collection"
+    ]
+    db_trash_collection: Collection[ProjectWrapperMongo] = db_dict[
+        "db_trash_collection"
+    ]
+
+    trash_documents = db_trash_collection.find({})
+    trash_documents_list = []
+    for document in trash_documents:
+        trash_documents_list.append(document)
+    assert len(trash_documents_list) == results_to_check["documents_trashed_count"]
 
 
 @pytest.mark.parametrize(
@@ -368,8 +381,12 @@ def test_clear_queue_alone(database_setup, query_params, results_to_check):
         ),
     ],
 )
-def test_clear_queue_after_email(database_setup, query_params, results_to_check):
+def test_clear_queue_after_email(
+    database_setup, query_params, results_to_check, monkeypatch
+):
     """test clearing the queue after an email has been triggered and emailed_about counts have been incremented"""
+    monkeypatch.setattr(requests, "post", mock_post)
+    monkeypatch.setattr(requests, "get", mock_get)
     email_response = trigger_email()
     delete_response = clear_queue(
         query_params["emailed_about"],
