@@ -142,6 +142,7 @@ class PostmarkSendEmailMockResponse:
                 "new_projects_count": 8,
                 "old_projects_count": 4,
                 "emailed_about_2_count": 0,
+                "behind_schedule_projects_count": 4,
             }
         ),
         (
@@ -156,6 +157,7 @@ class PostmarkSendEmailMockResponse:
                 "new_projects_count": 0,
                 "old_projects_count": 10,
                 "emailed_about_2_count": 6,
+                "behind_schedule_projects_count": 4,
             }
         ),
     ],
@@ -187,7 +189,9 @@ def test_trigger_email(monkeypatch, results_to_check):
         "old_dna_count": len(trigger_email_response["old_projects_dna"]),
         "new_projects_count": trigger_email_response["new_projects_count"],
         "old_projects_count": trigger_email_response["old_projects_count"],
-        "emailed_about_2_count": trigger_email_response["emailed_about_2_count"],
+        "behind_schedule_projects_count": trigger_email_response[
+            "behind_schedule_projects_count"
+        ],
     }
     assert response_values_to_check == results_to_check
 
