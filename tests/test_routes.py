@@ -245,20 +245,9 @@ def test_trigger_two_emails(database_setup, monkeypatch):
 @pytest.mark.parametrize(
     "query_params, results_to_check",
     [
-        (  # default behavior with no query params: delete all where emailed_about >= 2
+        (  # default behavior with no query params: all documents
             {
                 "emailed_about": None,
-                "all_projects": None,
-                "behind_schedule": None,
-            },
-            {
-                "documents_trashed_count": 0,
-            },
-        ),
-        (  # delete all projects
-            {
-                "emailed_about": None,
-                "all_projects": True,
                 "behind_schedule": None,
             },
             {
@@ -268,7 +257,6 @@ def test_trigger_two_emails(database_setup, monkeypatch):
         (  # delete only behind schedule and emailed about 1
             {
                 "emailed_about": 1,
-                "all_projects": None,
                 "behind_schedule": True,
             },
             {
@@ -283,7 +271,6 @@ def test_clear_queue_alone(database_setup, query_params, results_to_check, monke
     monkeypatch.setattr(requests, "get", mock_get)
     delete_response = clear_queue(
         query_params["emailed_about"],
-        query_params["all_projects"],
         query_params["behind_schedule"],
     )
     assert (
@@ -309,54 +296,40 @@ def test_clear_queue_alone(database_setup, query_params, results_to_check, monke
 @pytest.mark.parametrize(
     "query_params, results_to_check",
     [
-        (  # default behavior with no query params: delete all where emailed_about >= 2
+        (  # default behavior with no query params: delete all
             {
                 "emailed_about": None,
-                "all_projects": None,
-                "behind_schedule": None,
-            },
-            {
-                "documents_trashed_count": 6,
-            },
-        ),
-        (  # delete emailed_about == 1
-            {
-                "emailed_about": 1,
-                "all_projects": None,
-                "behind_schedule": None,
-            },
-            {
-                "documents_trashed_count": 9,
-            },
-        ),
-        (  # delete all projects
-            {
-                "emailed_about": None,
-                "all_projects": True,
                 "behind_schedule": None,
             },
             {
                 "documents_trashed_count": 15,
             },
         ),
+        (  # delete emailed_about == 1
+            {
+                "emailed_about": 1,
+                "behind_schedule": None,
+            },
+            {
+                "documents_trashed_count": 9,
+            },
+        ),
         (  # delete emailed about == 1 and behind schedule True
             {
                 "emailed_about": 1,
-                "all_projects": None,
                 "behind_schedule": True,
             },
             {
-                "documents_trashed_count": 1,
+                "documents_trashed_count": 2,
             },
         ),
         (  # delete emailed about == 1 and behind schedule False
             {
                 "emailed_about": 1,
-                "all_projects": None,
                 "behind_schedule": False,
             },
             {
-                "documents_trashed_count": 0,
+                "documents_trashed_count": 2,
             },
         ),
     ],
@@ -370,7 +343,6 @@ def test_clear_queue_after_email(
     email_response = trigger_email()
     delete_response = clear_queue(
         query_params["emailed_about"],
-        query_params["all_projects"],
         query_params["behind_schedule"],
     )
     assert (
