@@ -18,9 +18,43 @@ import os
 import json
 
 
+def mock_post(*args, **kwargs):
+    return PostmarkSendEmailMockResponse()
+
+    monkeypatch.setattr(requests, "post", mock_post)
+
+
+def mock_get(*args, **kwargs):
+    return VtigerGetSingleProjectInfoByProjectNumberMockResponse()
+
+    monkeypatch.setattr(requests, "get", mock_get)
+
+
+class VtigerGetSingleProjectInfoByProjectNumberMockResponse:
+    @staticmethod
+    def json():
+        return {"success": True, "result": []}
+
+    @staticmethod
+    def raise_for_status():
+        return None
+
+
+class PostmarkSendEmailMockResponse:
+    @staticmethod
+    def json():
+        return {
+            "ErrorCode": 0,
+            "Message": "OK",
+            "MessageID": "sdf09a8sd90f8a09dsf8a90sd8fa09ds",
+            "SubmittedAt": "2005-05-05T05:05:05.0550505Z",
+            "To": "a@a.com,b@b.com",
+        }
+
+
 @pytest.fixture
-def setup():
-    """connect to database and reset it. this runs before every test. """
+def database_setup():
+    """connect to database and reset it. this runs before every test."""
     MONGO_URI_PREFIX = os.getenv("MONGO_URI_PREFIX") or ""
     MONGO_URI_ADDRESS = os.getenv("MONGO_URI_ADDRESS") or ""
     MONGO_USERNAME = os.getenv("MONGO_USERNAME") or ""
@@ -33,8 +67,10 @@ def setup():
     db = client[MONGO_DB_NAME]
     db_queue_collection = db[QUEUE_COLLECTION]
     db_trash_collection = db[TRASH_COLLECTION]
-    db_queue_collection.delete_many({}) # delete everything in queue 
-    with open('testing_seed.json', 'r') as test_data_file: # then fresh import from json file 
+    db_queue_collection.delete_many({})  # delete everything in queue
+    with open(
+        "testing_seed.json", "r"
+    ) as test_data_file:  # then fresh import from json file
         data = json.load(test_data_file)
     db_queue_collection.insert_many(data)
 
@@ -89,12 +125,12 @@ def setup():
         (
             # behind schedule yes upsert
             {
-                "projectstatus": "Cloning completed",
-                "cf_project_activities": "CLONING",
+                "projectstatus": "almost done with this assay",
+                "cf_project_activities": "ASSAY",
                 "projectname": "Upserted project",
                 "cf_project_clonename": "RAY01",
                 "cf_project_lotnumber": "",
-                "project_no": "PROJ00000301",
+                "project_no": "PROJ2002",
                 "cf_project_quotenumber": "",
                 "description": "some description!",
                 "cf_project_aavname": "",
@@ -110,7 +146,7 @@ def setup():
         ),
     ],
 )
-def test_add_project_to_queue(input_project, results_to_check, setup):
+def test_add_project_to_queue(input_project, results_to_check, database_setup):
     p = ProjectRequestBody(**input_project)
     add_response = add_project_to_queue(p)
     assert add_response["success"] == True
@@ -129,79 +165,20 @@ def test_add_project_to_queue(input_project, results_to_check, setup):
     )
 
 
-class VtigerGetSingleProjectInfoByProjectNumberMockResponse:
-    @staticmethod
-    def json():
-        return {"success": True, "result": []}
-
-    @staticmethod
-    def raise_for_status():
-        return None
-
-
-class PostmarkSendEmailMockResponse:
-    @staticmethod
-    def json():
-        return {
-            "ErrorCode": 0,
-            "Message": "OK",
-            "MessageID": "sdf09a8sd90f8a09dsf8a90sd8fa09ds",
-            "SubmittedAt": "2005-05-05T05:05:05.0550505Z",
-            "To": "a@a.com,b@b.com",
-        }
-
-
-@pytest.mark.parametrize(
-    "results_to_check",
-    [
-        (
-            # first email triggered
-            {
-                "new_sf9_count": 1,
-                "new_cloning_count": 2,
-                "new_dna_count": 2,
-                "old_sf9_count": 0,
-                "old_cloning_count": 1,
-                "old_dna_count": 1,
-                "new_projects_count": 8,
-                "old_projects_count": 4,
-                "behind_schedule_projects_count": 5,
-            }
-        ),
-        (
-            # second email triggered
-            {
-                "new_sf9_count": 0,
-                "new_cloning_count": 0,
-                "new_dna_count": 0,
-                "old_sf9_count": 1,
-                "old_cloning_count": 2,
-                "old_dna_count": 2,
-                "new_projects_count": 0,
-                "old_projects_count": 8,
-                "behind_schedule_projects_count": 5,
-            }
-        ),
-    ],
-)
-def test_trigger_email(monkeypatch, results_to_check, setup):
-    # call the function and get the return value
-    # check the return value's lists to see length for count of projects
-    # count emailed_about: 0 and emailed_about: 1 for all new projects lists
-    # same for old proj lists
-
-    def mock_post(*args, **kwargs):
-        return PostmarkSendEmailMockResponse()
-
-    monkeypatch.setattr(requests, "post", mock_post)
-
-    def mock_get(*args, **kwargs):
-        return VtigerGetSingleProjectInfoByProjectNumberMockResponse()
-
-    monkeypatch.setattr(requests, "get", mock_get)
-
+def test_trigger_one_email(database_setup):
     trigger_email_response = trigger_email()
     assert trigger_email_response["email_response"]["ErrorCode"] == 0
+    results_to_check = {
+        "new_sf9_count": 1,
+        "new_cloning_count": 2,
+        "new_dna_count": 2,
+        "old_sf9_count": 0,
+        "old_cloning_count": 1,
+        "old_dna_count": 1,
+        "new_projects_count": 8,
+        "old_projects_count": 4,
+        "behind_schedule_projects_count": 5,
+    }
     response_values_to_check = {
         "new_sf9_count": len(trigger_email_response["new_projects_sf9"]),
         "new_cloning_count": len(trigger_email_response["new_projects_cloning"]),
@@ -212,6 +189,38 @@ def test_trigger_email(monkeypatch, results_to_check, setup):
         "new_projects_count": trigger_email_response["new_projects_count"],
         "old_projects_count": trigger_email_response["old_projects_count"],
         "behind_schedule_projects_count": trigger_email_response[
+            "behind_schedule_projects_count"
+        ],
+    }
+    assert response_values_to_check == results_to_check
+
+
+def test_trigger_two_emails(results_to_check, database_setup):
+    """test sending two emails in succession to ensure that the emailed_about gets incremented properly."""
+    trigger_email_response_1 = trigger_email()
+    trigger_email_response_2 = trigger_email()
+    assert trigger_email_response_2["email_response"]["ErrorCode"] == 0
+    results_to_check = {
+        "new_sf9_count": 1,
+        "new_cloning_count": 2,
+        "new_dna_count": 2,
+        "old_sf9_count": 0,
+        "old_cloning_count": 1,
+        "old_dna_count": 1,
+        "new_projects_count": 8,
+        "old_projects_count": 4,
+        "behind_schedule_projects_count": 5,
+    }
+    response_values_to_check = {
+        "new_sf9_count": len(trigger_email_response_2["new_projects_sf9"]),
+        "new_cloning_count": len(trigger_email_response_2["new_projects_cloning"]),
+        "new_dna_count": len(trigger_email_response_2["new_projects_dna"]),
+        "old_sf9_count": len(trigger_email_response_2["old_projects_sf9"]),
+        "old_cloning_count": len(trigger_email_response_2["old_projects_cloning"]),
+        "old_dna_count": len(trigger_email_response_2["old_projects_dna"]),
+        "new_projects_count": trigger_email_response_2["new_projects_count"],
+        "old_projects_count": trigger_email_response_2["old_projects_count"],
+        "behind_schedule_projects_count": trigger_email_response_2[
             "behind_schedule_projects_count"
         ],
     }
