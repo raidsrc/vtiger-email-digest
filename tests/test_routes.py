@@ -63,11 +63,12 @@ def database_setup():
         data = json.load(test_data_file)
     db_queue_collection.insert_many(data)
     db_trash_collection.delete_many({})
-    return {
+    yield {
         "db": db,
         "db_queue_collection": db_queue_collection,
         "db_trash_collection": db_trash_collection,
     }
+    client.close()
 
 
 @pytest.mark.parametrize(
