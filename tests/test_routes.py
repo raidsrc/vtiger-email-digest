@@ -141,7 +141,6 @@ class PostmarkSendEmailMockResponse:
                 "old_dna_count": 1,
                 "new_projects_count": 8,
                 "old_projects_count": 4,
-                "emailed_about_2_count": 0,
                 "behind_schedule_projects_count": 5,
             }
         ),
@@ -156,7 +155,6 @@ class PostmarkSendEmailMockResponse:
                 "old_dna_count": 2,
                 "new_projects_count": 0,
                 "old_projects_count": 8,
-                "emailed_about_2_count": 6,
                 "behind_schedule_projects_count": 5,
             }
         ),
