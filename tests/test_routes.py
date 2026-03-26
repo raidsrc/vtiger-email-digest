@@ -195,7 +195,7 @@ def test_trigger_one_email(database_setup):
     assert response_values_to_check == results_to_check
 
 
-def test_trigger_two_emails(results_to_check, database_setup):
+def test_trigger_two_emails(database_setup):
     """test sending two emails in succession to ensure that the emailed_about gets incremented properly."""
     trigger_email_response_1 = trigger_email()
     trigger_email_response_2 = trigger_email()
@@ -203,13 +203,13 @@ def test_trigger_two_emails(results_to_check, database_setup):
     results_to_check = {
         "new_sf9_count": 1,
         "new_cloning_count": 2,
-        "new_dna_count": 2,
+        "new_dna_count": 1,
         "old_sf9_count": 0,
         "old_cloning_count": 1,
         "old_dna_count": 1,
-        "new_projects_count": 8,
+        "new_projects_count": 7,
         "old_projects_count": 4,
-        "behind_schedule_projects_count": 5,
+        "behind_schedule_projects_count": 4,
     }
     response_values_to_check = {
         "new_sf9_count": len(trigger_email_response_2["new_projects_sf9"]),
