@@ -171,13 +171,13 @@ def test_trigger_one_email(database_setup):
     results_to_check = {
         "new_sf9_count": 1,
         "new_cloning_count": 2,
-        "new_dna_count": 2,
+        "new_dna_count": 1,
         "old_sf9_count": 0,
         "old_cloning_count": 1,
         "old_dna_count": 1,
-        "new_projects_count": 8,
+        "new_projects_count": 7,
         "old_projects_count": 4,
-        "behind_schedule_projects_count": 5,
+        "behind_schedule_projects_count": 4,
     }
     response_values_to_check = {
         "new_sf9_count": len(trigger_email_response["new_projects_sf9"]),
@@ -201,14 +201,14 @@ def test_trigger_two_emails(database_setup):
     trigger_email_response_2 = trigger_email()
     assert trigger_email_response_2["email_response"]["ErrorCode"] == 0
     results_to_check = {
-        "new_sf9_count": 1,
-        "new_cloning_count": 2,
-        "new_dna_count": 1,
-        "old_sf9_count": 0,
-        "old_cloning_count": 1,
+        "new_sf9_count": 0,
+        "new_cloning_count": 0,
+        "new_dna_count": 0,
+        "old_sf9_count": 1,
+        "old_cloning_count": 2,
         "old_dna_count": 1,
-        "new_projects_count": 7,
-        "old_projects_count": 4,
+        "new_projects_count": 0,
+        "old_projects_count": 7,
         "behind_schedule_projects_count": 4,
     }
     response_values_to_check = {
