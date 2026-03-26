@@ -11,14 +11,6 @@ import json
 """set up mocks for requests"""
 
 
-def mock_post(*args, **kwargs):
-    return PostmarkSendEmailMockResponse()
-
-
-def mock_get(*args, **kwargs):
-    return VtigerGetSingleProjectInfoByProjectNumberMockResponse()
-
-
 class VtigerGetSingleProjectInfoByProjectNumberMockResponse:
     @staticmethod
     def json():
@@ -39,6 +31,14 @@ class PostmarkSendEmailMockResponse:
             "SubmittedAt": "2005-05-05T05:05:05.0550505Z",
             "To": "a@a.com,b@b.com",
         }
+
+
+def mock_post(*args, **kwargs):
+    return PostmarkSendEmailMockResponse()
+
+
+def mock_get(*args, **kwargs):
+    return VtigerGetSingleProjectInfoByProjectNumberMockResponse()
 
 
 @pytest.fixture
@@ -162,7 +162,7 @@ def test_add_project_to_queue(
         == results_to_check["modified_time"]
     )
     # check the database for a document that matches, ensure it got added correctly
-    db_dict = database_setup()
+    db_dict = database_setup
     db_queue_collection: Collection[ProjectWrapperMongo] = db_dict[
         "db_queue_collection"
     ]
@@ -301,7 +301,7 @@ def test_clear_queue_alone(database_setup, query_params, results_to_check, monke
         == results_to_check["documents_trashed_count"]
     )
     # check the db to ensure these documents are gone and that they wound up in the trash collection
-    db_dict = database_setup()
+    db_dict = database_setup
     db_queue_collection: Collection[ProjectWrapperMongo] = db_dict[
         "db_queue_collection"
     ]
