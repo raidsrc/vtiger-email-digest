@@ -62,6 +62,7 @@ def database_setup():
     ) as test_data_file:  # then fresh import from json file
         data = json.load(test_data_file)
     db_queue_collection.insert_many(data)
+    db_trash_collection.delete_many({})
     return {
         "db": db,
         "db_queue_collection": db_queue_collection,
@@ -285,7 +286,6 @@ def test_clear_queue_alone(database_setup, query_params, results_to_check, monke
     db_trash_collection: Collection[ProjectWrapperMongo] = db_dict[
         "db_trash_collection"
     ]
-
     trash_documents = db_trash_collection.find({})
     trash_documents_list = []
     for document in trash_documents:
@@ -349,3 +349,16 @@ def test_clear_queue_after_email(
         len(delete_response["documents_trashed"])
         == results_to_check["documents_trashed_count"]
     )
+    # check the db to ensure these documents are gone and that they wound up in the trash collection
+    db_dict = database_setup
+    db_queue_collection: Collection[ProjectWrapperMongo] = db_dict[
+        "db_queue_collection"
+    ]
+    db_trash_collection: Collection[ProjectWrapperMongo] = db_dict[
+        "db_trash_collection"
+    ]
+    trash_documents = db_trash_collection.find({})
+    trash_documents_list = []
+    for document in trash_documents:
+        trash_documents_list.append(document)
+    assert len(trash_documents_list) == results_to_check["documents_trashed_count"]
