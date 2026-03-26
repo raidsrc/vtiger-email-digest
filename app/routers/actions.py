@@ -17,6 +17,8 @@ from app.helper import (
     convert_UTC_to_houston,
 )
 
+# TODO: get rid of actions because it's confusing. change api/actions/projects/... to api/projects/... and update cron job, workflows, routes, everything.
+
 MONGO_URI_PREFIX = os.getenv("MONGO_URI_PREFIX") or ""
 MONGO_URI_ADDRESS = os.getenv("MONGO_URI_ADDRESS") or ""
 MONGO_USERNAME = os.getenv("MONGO_USERNAME") or ""
