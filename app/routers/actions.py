@@ -165,7 +165,8 @@ def add_project_to_queue(project: ProjectRequestBody):
 def clear_queue(
     emailed_about: int | None = None,
     all_projects: bool | None = None,
-    behind_schedule: bool | None = False,
+    behind_schedule: bool | None = None,
+    default_behavior: bool | None = False,
 ):
     """
     remove projects from queue. this means moving projects from projectQueue into projectQueueTrash.
@@ -178,12 +179,13 @@ def clear_queue(
     query_filter = {}
     if emailed_about != None:
         query_filter["emailed_about"] = emailed_about
-    else:
-        query_filter["emailed_about"] = {"$gte": 2}
     if behind_schedule != None:
         query_filter["behind_schedule"] = behind_schedule
     if all_projects == True:
         query_filter = {}
+    if default_behavior == True:
+        # default behavior is what we'll go for most of the time.
+        query_filter = {"emailed_about": {"$gte": 2}}
 
     projectsCursor = db_queue_collection.find(query_filter)
 

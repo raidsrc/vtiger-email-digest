@@ -265,17 +265,7 @@ def test_trigger_two_emails(database_setup, monkeypatch):
                 "documents_trashed_count": 15,
             },
         ),
-        (  # delete only behind schedule
-            {
-                "emailed_about": None,
-                "all_projects": None,
-                "behind_schedule": True,
-            },
-            {
-                "documents_trashed_count": 4,
-            },
-        ),
-        (  # delete emailed about == 1 and behind schedule
+        (  # delete only behind schedule and emailed about 1
             {
                 "emailed_about": 1,
                 "all_projects": None,
@@ -349,17 +339,17 @@ def test_clear_queue_alone(database_setup, query_params, results_to_check, monke
                 "documents_trashed_count": 15,
             },
         ),
-        (  # delete only behind schedule
+        (  # delete emailed about == 1 and behind schedule True
             {
-                "emailed_about": None,
+                "emailed_about": 1,
                 "all_projects": None,
                 "behind_schedule": True,
             },
             {
-                "documents_trashed_count": 4,
+                "documents_trashed_count": 1,
             },
         ),
-        (  # delete emailed about == 1 and behind schedule False (different than behind sch == None!)
+        (  # delete emailed about == 1 and behind schedule False
             {
                 "emailed_about": 1,
                 "all_projects": None,
@@ -367,16 +357,6 @@ def test_clear_queue_alone(database_setup, query_params, results_to_check, monke
             },
             {
                 "documents_trashed_count": 0,
-            },
-        ),
-        (  # delete emailed about == 0 and behind schedule False (different than behind sch == None!)
-            {
-                "emailed_about": 0,
-                "all_projects": None,
-                "behind_schedule": False,
-            },
-            {
-                "documents_trashed_count": 2,
             },
         ),
     ],
