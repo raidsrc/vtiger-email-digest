@@ -9,13 +9,17 @@ testing idea: spin up a docker container containing a mongodb instance, populate
 i'm cooking
 """
 
+from pymongo.collection import Collection
+from pymongo.database import Database
 import pytest
 import requests
-from app.routers.actions import add_project_to_queue, trigger_email
-from app.class_types import ProjectRequestBody
+from app.routers.actions import add_project_to_queue, trigger_email, clear_queue
+from app.class_types import ProjectRequestBody, ProjectWrapperMongo
 import pymongo
 import os
 import json
+
+"""set up mocks for requests"""
 
 
 def mock_post(*args, **kwargs):
@@ -64,7 +68,7 @@ def database_setup():
     TRASH_COLLECTION = os.getenv("TRASH_COLLECTION") or ""
     uri = f"{MONGO_URI_PREFIX}{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_URI_ADDRESS}"
     client = pymongo.MongoClient(uri)
-    db = client[MONGO_DB_NAME]
+    db: Database[ProjectWrapperMongo] = client[MONGO_DB_NAME]
     db_queue_collection = db[QUEUE_COLLECTION]
     db_trash_collection = db[TRASH_COLLECTION]
     db_queue_collection.delete_many({})  # delete everything in queue
@@ -73,6 +77,11 @@ def database_setup():
     ) as test_data_file:  # then fresh import from json file
         data = json.load(test_data_file)
     db_queue_collection.insert_many(data)
+    return {
+        "db": db,
+        "db_queue_collection": db_queue_collection,
+        "db_trash_collection": db_trash_collection,
+    }
 
 
 @pytest.mark.parametrize(
@@ -163,6 +172,15 @@ def test_add_project_to_queue(input_project, results_to_check, database_setup):
         add_response["document_added_to_database"]["project"]["modifiedtime"]
         == results_to_check["modified_time"]
     )
+    # check the database for a document that matches, ensure it got added correctly
+    db_dict = database_setup()
+    db_queue_collection: Collection[ProjectWrapperMongo] = db_dict[
+        "db_queue_collection"
+    ]
+    found_document = db_queue_collection.find_one({"project.projectname": results_to_check["project_name"]})
+    assert found_document != None 
+    assert found_document["project"]["projectname"] == results_to_check["project_name"]
+    assert found_document["project"]["modifiedtime"] == results_to_check["modified_time"]
 
 
 def test_trigger_one_email(database_setup):
@@ -227,6 +245,138 @@ def test_trigger_two_emails(database_setup):
     assert response_values_to_check == results_to_check
 
 
-# save this one for last
-def test_clear_queue():
-    pass
+@pytest.mark.parametrize(
+    "query_params, results_to_check",
+    [
+        (  # default behavior with no query params: delete all where emailed_about >= 2
+            {
+                "emailed_about": None,
+                "all_projects": None,
+                "behind_schedule": None,
+            },
+            {
+                "documents_trashed_count": 0,
+            },
+        ),
+        (  # delete all projects
+            {
+                "emailed_about": None,
+                "all_projects": True,
+                "behind_schedule": None,
+            },
+            {
+                "documents_trashed_count": 15,
+            },
+        ),
+        (  # delete only behind schedule
+            {
+                "emailed_about": None,
+                "all_projects": None,
+                "behind_schedule": True,
+            },
+            {
+                "documents_trashed_count": 4,
+            },
+        ),
+        (  # delete emailed about == 1 and behind schedule
+            {
+                "emailed_about": 1,
+                "all_projects": None,
+                "behind_schedule": True,
+            },
+            {
+                "documents_trashed_count": 2,
+            },
+        ),
+    ],
+)
+def test_clear_queue_alone(database_setup, query_params, results_to_check):
+    """test clearing the queue without triggering an email beforehand"""
+    delete_response = clear_queue(
+        query_params["emailed_about"],
+        query_params["all_projects"],
+        query_params["behind_schedule"],
+    )
+    assert (
+        len(delete_response["documents_trashed"])
+        == results_to_check["documents_trashed_count"]
+    )
+
+
+@pytest.mark.parametrize(
+    "query_params, results_to_check",
+    [
+        (  # default behavior with no query params: delete all where emailed_about >= 2
+            {
+                "emailed_about": None,
+                "all_projects": None,
+                "behind_schedule": None,
+            },
+            {
+                "documents_trashed_count": 6,
+            },
+        ),
+        (  # delete emailed_about == 1
+            {
+                "emailed_about": 1,
+                "all_projects": None,
+                "behind_schedule": None,
+            },
+            {
+                "documents_trashed_count": 9,
+            },
+        ),
+        (  # delete all projects
+            {
+                "emailed_about": None,
+                "all_projects": True,
+                "behind_schedule": None,
+            },
+            {
+                "documents_trashed_count": 15,
+            },
+        ),
+        (  # delete only behind schedule
+            {
+                "emailed_about": None,
+                "all_projects": None,
+                "behind_schedule": True,
+            },
+            {
+                "documents_trashed_count": 4,
+            },
+        ),
+        (  # delete emailed about == 1 and behind schedule False (different than behind sch == None!)
+            {
+                "emailed_about": 1,
+                "all_projects": None,
+                "behind_schedule": False,
+            },
+            {
+                "documents_trashed_count": 0,
+            },
+        ),
+        (  # delete emailed about == 0 and behind schedule False (different than behind sch == None!)
+            {
+                "emailed_about": 0,
+                "all_projects": None,
+                "behind_schedule": False,
+            },
+            {
+                "documents_trashed_count": 2,
+            },
+        ),
+    ],
+)
+def test_clear_queue_after_email(database_setup, query_params, results_to_check):
+    """test clearing the queue after an email has been triggered and emailed_about counts have been incremented"""
+    email_response = trigger_email()
+    delete_response = clear_queue(
+        query_params["emailed_about"],
+        query_params["all_projects"],
+        query_params["behind_schedule"],
+    )
+    assert (
+        len(delete_response["documents_trashed"])
+        == results_to_check["documents_trashed_count"]
+    )
