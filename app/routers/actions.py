@@ -179,7 +179,7 @@ def clear_queue(
     if emailed_about != None:
         query_filter["emailed_about"] = emailed_about
     else:
-        query_filter["emailed_about"] = {"$gte: 2"}
+        query_filter["emailed_about"] = {"$gte": 2}
     if behind_schedule != None:
         query_filter["behind_schedule"] = behind_schedule
     if all_projects == True:
