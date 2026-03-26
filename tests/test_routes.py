@@ -110,7 +110,7 @@ def setup():
         ),
     ],
 )
-def test_add_project_to_queue(input_project, results_to_check):
+def test_add_project_to_queue(input_project, results_to_check, setup):
     p = ProjectRequestBody(**input_project)
     add_response = add_project_to_queue(p)
     assert add_response["success"] == True
@@ -184,7 +184,7 @@ class PostmarkSendEmailMockResponse:
         ),
     ],
 )
-def test_trigger_email(monkeypatch, results_to_check):
+def test_trigger_email(monkeypatch, results_to_check, setup):
     # call the function and get the return value
     # check the return value's lists to see length for count of projects
     # count emailed_about: 0 and emailed_about: 1 for all new projects lists
