@@ -13,6 +13,30 @@ import pytest
 import requests
 from app.routers.actions import add_project_to_queue, trigger_email
 from app.class_types import ProjectRequestBody
+import pymongo
+import os
+import json
+
+
+@pytest.fixture
+def setup():
+    """connect to database and reset it. this runs before every test. """
+    MONGO_URI_PREFIX = os.getenv("MONGO_URI_PREFIX") or ""
+    MONGO_URI_ADDRESS = os.getenv("MONGO_URI_ADDRESS") or ""
+    MONGO_USERNAME = os.getenv("MONGO_USERNAME") or ""
+    MONGO_PASSWORD = os.getenv("MONGO_PASSWORD") or ""
+    MONGO_DB_NAME = os.getenv("MONGO_DB_NAME") or ""
+    QUEUE_COLLECTION = os.getenv("QUEUE_COLLECTION") or ""
+    TRASH_COLLECTION = os.getenv("TRASH_COLLECTION") or ""
+    uri = f"{MONGO_URI_PREFIX}{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_URI_ADDRESS}"
+    client = pymongo.MongoClient(uri)
+    db = client[MONGO_DB_NAME]
+    db_queue_collection = db[QUEUE_COLLECTION]
+    db_trash_collection = db[TRASH_COLLECTION]
+    db_queue_collection.delete_many({}) # delete everything in queue 
+    with open('testing_seed.json', 'r') as test_data_file: # then fresh import from json file 
+        data = json.load(test_data_file)
+    db_queue_collection.insert_many(data)
 
 
 @pytest.mark.parametrize(
