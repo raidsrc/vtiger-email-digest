@@ -351,8 +351,7 @@ def test_clear_queue_after_email(
     monkeypatch.setattr(requests, "get", mock_get)
     email_response = trigger_email()
     delete_response = clear_queue(
-        query_params["emailed_about"],
-        query_params["behind_schedule"],
+        **query_params
     )
     assert (
         len(delete_response["documents_trashed"])
