@@ -17,10 +17,12 @@ from app.helper import (
     convert_UTC_to_houston,
 )
 
+
 MONGO_URI_PREFIX = os.getenv("MONGO_URI_PREFIX") or ""
 MONGO_URI_ADDRESS = os.getenv("MONGO_URI_ADDRESS") or ""
 MONGO_USERNAME = os.getenv("MONGO_USERNAME") or ""
 MONGO_PASSWORD = os.getenv("MONGO_PASSWORD") or ""
+MONGO_DB_NAME = os.getenv("MONGO_DB_NAME") or ""
 QUEUE_COLLECTION = os.getenv("QUEUE_COLLECTION") or ""
 TRASH_COLLECTION = os.getenv("TRASH_COLLECTION") or ""
 if MONGO_URI_PREFIX == "":
@@ -31,16 +33,24 @@ if MONGO_USERNAME == "":
     raise Exception("MONGO_USERNAME missing")
 if MONGO_PASSWORD == "":
     raise Exception("MONGO_PASSWORD missing")
+if MONGO_DB_NAME == "":
+    raise Exception("MONGO_DB_NAME missing")
 if QUEUE_COLLECTION == "":
     raise Exception("QUEUE_COLLECTION missing")
 if TRASH_COLLECTION == "":
     raise Exception("TRASH_COLLECTION missing")
 
+print("======== VTIGER EMAIL DIGEST SERVER ========")
+print("environment variables loaded successfully.")
+
 uri = f"{MONGO_URI_PREFIX}{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_URI_ADDRESS}"
 client: MongoClient[ProjectWrapperMongo] = MongoClient(uri)
-db: Database[ProjectWrapperMongo] = client["vtigerEmailDigestDatabase"]
+db: Database[ProjectWrapperMongo] = client[MONGO_DB_NAME]
 db_queue_collection = db[QUEUE_COLLECTION]
 db_trash_collection = db[TRASH_COLLECTION]
+
+print("======== VTIGER EMAIL DIGEST SERVER ========")
+print("database loaded successfully.")
 
 EMAIL_SETTINGS_RECIPIENTS = os.getenv("EMAIL_SETTINGS_RECIPIENTS") or ""
 EMAIL_SETTINGS_CC = os.getenv("EMAIL_SETTINGS_CC") or ""
@@ -49,10 +59,10 @@ POSTMARK_SERVER_TOKEN = os.getenv("POSTMARK_SERVER_TOKEN") or ""
 # not throwing error if these ones are empty string because they should be allowed to be empty string
 
 
-actions_router = APIRouter(dependencies=[Depends(get_current_username)])
+api_router = APIRouter(dependencies=[Depends(get_current_username)])
 
 
-@actions_router.get("/projects/queue")
+@api_router.get("/projects/queue")
 def view_queue(
     emailed_about: int | None = None,
     behind_schedule: bool | None = None,
@@ -66,9 +76,9 @@ def view_queue(
     """
     projects: list[ProjectWrapperMongo] = []
     query_filter = {}
-    if emailed_about is not None:
+    if emailed_about != None:
         query_filter["emailed_about"] = emailed_about
-    if behind_schedule is not None:
+    if behind_schedule != None:
         query_filter["behind_schedule"] = behind_schedule
     projectsCursor = db_queue_collection.find(query_filter)
 
@@ -83,8 +93,8 @@ def view_queue(
     return projects
 
 
-@actions_router.post("/projects/queue")
-async def add_project_to_queue(project: ProjectRequestBody):
+@api_router.post("/projects/queue")
+def add_project_to_queue(project: ProjectRequestBody):
     """
     add a project to the projects queue.
     """
@@ -99,7 +109,7 @@ async def add_project_to_queue(project: ProjectRequestBody):
     # be ready for behind_schedule coming from vtiger workflow to be a string or a bool or none.
     behind_schedule = (
         True
-        if project.behind_schedule == "true" or project.behind_schedule is True
+        if project.behind_schedule == "true" or project.behind_schedule == True
         else False
     )
     document_to_insert = {
@@ -122,7 +132,7 @@ async def add_project_to_queue(project: ProjectRequestBody):
     }
     # if behind schedule, upsert. if a behind schedule project with this project_no already exists in the queue, replace it with the new data. otherwise, it's new so insert as normal.
     upserted: bool = False
-    if behind_schedule is True:
+    if behind_schedule == True:
         document_to_upsert = document_to_insert  # just so i'm clear on what it is.
         # update the modified time with the new value sent from vt
         document_to_upsert["project"]["modifiedtime"] = (
@@ -137,7 +147,7 @@ async def add_project_to_queue(project: ProjectRequestBody):
         # there is no did_upsert. for some reason the autocompletion and the pymongo docs are wrong.
         # there is an updatedExisting property on the raw_result, though. using that.
         raw_result = replace_return.raw_result
-        assert raw_result is not None
+        assert raw_result != None
         upserted = raw_result["updatedExisting"]
     else:
         db_queue_collection.insert_one(document_to_insert)  # type: ignore
@@ -150,11 +160,11 @@ async def add_project_to_queue(project: ProjectRequestBody):
     return response
 
 
-@actions_router.delete("/projects/queue")
+@api_router.delete("/projects/queue")
 def clear_queue(
     emailed_about: int | None = None,
-    all_projects: bool | None = None,
-    behind_schedule: bool | None = False,
+    behind_schedule: bool | None = None,
+    default_behavior: bool | None = False,
 ):
     """
     remove projects from queue. this means moving projects from projectQueue into projectQueueTrash.
@@ -165,14 +175,13 @@ def clear_queue(
 
     projects: list[ProjectWrapperMongo] = []
     query_filter = {}
-    if emailed_about is not None:
+    if emailed_about != None:
         query_filter["emailed_about"] = emailed_about
-    else:
-        query_filter["emailed_about"] = {"$gte": 2}
-    if behind_schedule is not None:
+    if behind_schedule != None:
         query_filter["behind_schedule"] = behind_schedule
-    if all_projects is True:
-        query_filter = {}
+    if default_behavior == True:
+        # default behavior is what we'll go for most of the time.
+        query_filter = {"emailed_about": {"$gte": 2}}
 
     projectsCursor = db_queue_collection.find(query_filter)
 
@@ -212,7 +221,7 @@ def clear_queue(
 # i will manually delete the projectQueueTrash when I feel like it.
 
 
-@actions_router.get("/projects/email")
+@api_router.get("/projects/email")
 def view_email_settings():
     """
     view current email settings.
@@ -224,7 +233,7 @@ def view_email_settings():
     }
 
 
-@actions_router.post("/projects/email")
+@api_router.post("/projects/email")
 def trigger_email():
     """
     trigger a project digest email to be sent.
@@ -243,23 +252,23 @@ def trigger_email():
     new_projects = [
         p["project"]
         for p in projects
-        if p.get("emailed_about") == 0 and p.get("behind_schedule") is not True
+        if p.get("emailed_about") == 0 and p.get("behind_schedule") != True
         # use .get in dictionaries to avoid KeyError if it doesn't exist
     ]
     old_projects = [
         p["project"]
         for p in projects
-        if p.get("emailed_about") == 1 and p.get("behind_schedule") is not True
+        if p.get("emailed_about") == 1 and p.get("behind_schedule") != True
     ]
     # get projects that are behind schedule
     behind_schedule_projects = [
-        p.get("project") for p in projects if p.get("behind_schedule") is True
+        p.get("project") for p in projects if p.get("behind_schedule") == True
     ]
     # lists are now sorted by activities
     # fetch updated data from vtiger on all the old projects, then add that data to those old projects
     for old_project in old_projects:
         full_data = get_project_info_from_vtiger_by_number(old_project["project_no"])
-        if full_data is None:  # if no project data came back
+        if full_data == None:  # if no project data came back
             continue  # skip it whatever
         # update fields with new data
         old_project["projectstatus"] = full_data["projectstatus"]

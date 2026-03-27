@@ -73,6 +73,7 @@ def get_project_info_from_vtiger_by_number(project_number: str):
         print(
             f"Validation error '{val_err}' in get_project_info_from_vtiger_by_number for {project_number}."
         )
+        return None
     except requests.ConnectionError as conn_err:
         print(
             f"ConnectionError '{conn_err}' in get_project_info_from_vtiger_by_number for {project_number}."
