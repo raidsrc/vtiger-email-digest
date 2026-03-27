@@ -17,7 +17,6 @@ from app.helper import (
     convert_UTC_to_houston,
 )
 
-# TODO: get rid of actions because it's confusing. change api/actions/projects/... to api/projects/... and update cron job, workflows, routes, everything.
 
 MONGO_URI_PREFIX = os.getenv("MONGO_URI_PREFIX") or ""
 MONGO_URI_ADDRESS = os.getenv("MONGO_URI_ADDRESS") or ""
@@ -60,10 +59,10 @@ POSTMARK_SERVER_TOKEN = os.getenv("POSTMARK_SERVER_TOKEN") or ""
 # not throwing error if these ones are empty string because they should be allowed to be empty string
 
 
-actions_router = APIRouter(dependencies=[Depends(get_current_username)])
+api_router = APIRouter(dependencies=[Depends(get_current_username)])
 
 
-@actions_router.get("/projects/queue")
+@api_router.get("/projects/queue")
 def view_queue(
     emailed_about: int | None = None,
     behind_schedule: bool | None = None,
@@ -94,7 +93,7 @@ def view_queue(
     return projects
 
 
-@actions_router.post("/projects/queue")
+@api_router.post("/projects/queue")
 def add_project_to_queue(project: ProjectRequestBody):
     """
     add a project to the projects queue.
@@ -161,7 +160,7 @@ def add_project_to_queue(project: ProjectRequestBody):
     return response
 
 
-@actions_router.delete("/projects/queue")
+@api_router.delete("/projects/queue")
 def clear_queue(
     emailed_about: int | None = None,
     behind_schedule: bool | None = None,
@@ -222,7 +221,7 @@ def clear_queue(
 # i will manually delete the projectQueueTrash when I feel like it.
 
 
-@actions_router.get("/projects/email")
+@api_router.get("/projects/email")
 def view_email_settings():
     """
     view current email settings.
@@ -234,7 +233,7 @@ def view_email_settings():
     }
 
 
-@actions_router.post("/projects/email")
+@api_router.post("/projects/email")
 def trigger_email():
     """
     trigger a project digest email to be sent.

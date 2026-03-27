@@ -2,13 +2,13 @@ from fastapi import FastAPI
 from datetime import datetime
 from dotenv import load_dotenv
 from fastapi.security import HTTPBasic
-from app.routers import actions
+from app.routers import api
 
 load_dotenv()
 app = FastAPI()
 security = HTTPBasic()
 
-app.include_router(actions.actions_router, prefix="/api/actions")
+app.include_router(api.api_router, prefix="/api")
 
 
 @app.get("/")

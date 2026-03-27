@@ -2,7 +2,7 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 import pytest
 import requests
-from app.routers.actions import add_project_to_queue, trigger_email, clear_queue
+from app.routers.api import add_project_to_queue, trigger_email, clear_queue
 from app.class_types import ProjectRequestBody, ProjectWrapperMongo
 import pymongo
 import os
