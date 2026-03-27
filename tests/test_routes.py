@@ -247,11 +247,8 @@ def test_trigger_two_emails(database_setup, monkeypatch):
 @pytest.mark.parametrize(
     "query_params, results_to_check",
     [
-        (  # default behavior with no query params: all documents
-            {
-                "emailed_about": None,
-                "behind_schedule": None,
-            },
+        (  # behavior with no query params: all documents
+            {},
             {
                 "documents_trashed_count": 15,
             },
@@ -265,6 +262,14 @@ def test_trigger_two_emails(database_setup, monkeypatch):
                 "documents_trashed_count": 2,
             },
         ),
+        (  # delete emailed_about >= 2
+            {
+                "default_behavior": True,
+            },
+            {
+                "documents_trashed_count": 0,
+            },
+        ),
     ],
 )
 def test_clear_queue_alone(database_setup, query_params, results_to_check, monkeypatch):
@@ -272,8 +277,7 @@ def test_clear_queue_alone(database_setup, query_params, results_to_check, monke
     monkeypatch.setattr(requests, "post", mock_post)
     monkeypatch.setattr(requests, "get", mock_get)
     delete_response = clear_queue(
-        query_params["emailed_about"],
-        query_params["behind_schedule"],
+        **query_params,
     )
     assert (
         len(delete_response["documents_trashed"])
@@ -297,11 +301,8 @@ def test_clear_queue_alone(database_setup, query_params, results_to_check, monke
 @pytest.mark.parametrize(
     "query_params, results_to_check",
     [
-        (  # default behavior with no query params: delete all
-            {
-                "emailed_about": None,
-                "behind_schedule": None,
-            },
+        (  # behavior with no query params: delete all
+            {},
             {
                 "documents_trashed_count": 15,
             },
@@ -309,7 +310,6 @@ def test_clear_queue_alone(database_setup, query_params, results_to_check, monke
         (  # delete emailed_about == 1
             {
                 "emailed_about": 1,
-                "behind_schedule": None,
             },
             {
                 "documents_trashed_count": 9,
@@ -331,6 +331,14 @@ def test_clear_queue_alone(database_setup, query_params, results_to_check, monke
             },
             {
                 "documents_trashed_count": 2,
+            },
+        ),
+        (  # delete emailed_about >= 2
+            {
+                "default_behavior": True,
+            },
+            {
+                "documents_trashed_count": 6,
             },
         ),
     ],
