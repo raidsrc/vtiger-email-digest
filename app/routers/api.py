@@ -128,6 +128,7 @@ def add_project_to_queue(project: ProjectRequestBody):
             "cf_project_aavname": project.cf_project_aavname or "",
             "vtiger_email_digest_received_datetime_houston": now_houston_time,
             "modifiedtime": project.modifiedtime or "",
+            "createdtime": project.createdtime or "",
         },
     }
     # if behind schedule, upsert. if a behind schedule project with this project_no already exists in the queue, replace it with the new data. otherwise, it's new so insert as normal.
@@ -169,7 +170,6 @@ def clear_queue(
     """
     remove projects from queue. this means moving projects from projectQueue into projectQueueTrash.
     default behavior is to clear only the projects where emailed_about >= 2.
-    if all_projects is true, delete all projects
     if behind_schedule is true, delete those that are behind schedule
     """
 
@@ -276,7 +276,6 @@ def trigger_email():
         old_project["cf_project_clonename"] = full_data["cf_project_clonename"]
         old_project["cf_project_aavname"] = full_data["cf_project_aavname"]
         # and add the other stuff
-        old_project["id"] = full_data["id"]
         old_project["modifiedtime"] = convert_UTC_to_houston(full_data["modifiedtime"])
         old_project["createdtime"] = convert_UTC_to_houston(full_data["createdtime"])
     # now old projects list is updated with some more stuff

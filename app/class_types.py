@@ -15,8 +15,10 @@ class ProjectRequestBody(BaseModel):
     cf_project_aavname: str = ""
     behind_schedule: str | bool | None = "false"
     modifiedtime: str | None = None
+    createdtime: str | None = None
 
 
+# what's stored in mongodb within the wrapper
 class Project(TypedDict):
     projectstatus: str
     cf_project_activities: str
@@ -27,9 +29,8 @@ class Project(TypedDict):
     cf_project_quotenumber: str
     description: str
     cf_project_aavname: str
-    id: str | None 
-    modifiedtime: str | None
-    createdtime: str | None
+    modifiedtime: str
+    createdtime: str
 
 
 class VtigerGetProjectResponse(BaseModel):
@@ -37,6 +38,7 @@ class VtigerGetProjectResponse(BaseModel):
     result: List[Dict[str, str]]
 
 
+# what's stored in mongodb as a document
 class ProjectWrapperMongo(TypedDict):
     _id: str  # in the db it's an ObjectId. make sure to convert this to a string before returning in fastapi.
     project: Project
