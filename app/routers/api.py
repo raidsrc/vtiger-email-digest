@@ -104,6 +104,7 @@ def add_project_to_queue(project: ProjectRequestBody):
     # write to db with datetime received
     # return that the data has been written to db successfully
 
+    logger.info("POST -> /projects/queue")
     UTC = ZoneInfo("UTC")
     now_utc = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
     now_houston_time = convert_UTC_to_houston(now_utc)
@@ -151,8 +152,10 @@ def add_project_to_queue(project: ProjectRequestBody):
         raw_result = replace_return.raw_result
         assert raw_result != None
         upserted = raw_result["updatedExisting"]
+        logger.info("upserted one document with project no. {}", project.project_no)
     else:
         db_queue_collection.insert_one(document_to_insert)  # type: ignore
+        logger.info("inserted one document with project no. {}", project.project_no)
     # document_to_insert["_id"] = str(document_to_insert["_id"])
     response = {
         "success": True,
@@ -205,9 +208,11 @@ def clear_queue(
 
     # otherwise, delete stuff
     db_queue_collection.delete_many(query_filter)
+    logger.info("deleted {} projects from queue.", len(projects))
 
     # deletion finished, now to insert into trash collection
     db_trash_collection.insert_many(projects)
+    logger.info("added {} projects to trash collection.", len(projects))
 
     # before returning gotta change ObjectId to string so fastapi doesn't complain
     for project in projects:
@@ -249,6 +254,7 @@ def trigger_email():
     projects = sorted(
         projects, key=lambda project: project["project"]["cf_project_activities"]
     )
+    logger.info("{} projects fetched for emailing.", len(projects))
     # get projects that are not behind schedule that have been emailed about 0 times or 1 time.
     new_projects = [
         p["project"]
@@ -265,6 +271,7 @@ def trigger_email():
     behind_schedule_projects = [
         p.get("project") for p in projects if p.get("behind_schedule") == True
     ]
+    logger.info("new projects: {}. old projects: {}. behind schedule projects: {}.", len(new_projects), len(old_projects), len(behind_schedule_projects))
     # lists are now sorted by activities
     # fetch updated data from vtiger on all the old projects, then add that data to those old projects
     for old_project in old_projects:
@@ -334,6 +341,7 @@ def trigger_email():
         query_filter = {}
         update_operation = {"$inc": {"emailed_about": 1}}
         db_queue_collection.update_many(query_filter, update_operation)
+        logger.info("email sent successfully. all projects' emailed_about count incremented.")
 
     return {
         "new_projects_sf9": new_dict["sf9"],
