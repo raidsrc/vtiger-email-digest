@@ -6,6 +6,7 @@ from pymongo.database import Database
 import requests
 import json
 from zoneinfo import ZoneInfo
+from loguru import logger
 from app.deps import get_current_username
 from app.class_types import (
     ProjectRequestBody,
@@ -40,8 +41,8 @@ if QUEUE_COLLECTION == "":
 if TRASH_COLLECTION == "":
     raise Exception("TRASH_COLLECTION missing")
 
-print("======== VTIGER EMAIL DIGEST SERVER ========")
-print("environment variables loaded successfully.")
+logger.info("======== VTIGER EMAIL DIGEST SERVER ========")
+logger.info("environment variables loaded successfully.")
 
 uri = f"{MONGO_URI_PREFIX}{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_URI_ADDRESS}"
 client: MongoClient[ProjectWrapperMongo] = MongoClient(uri)
@@ -49,8 +50,8 @@ db: Database[ProjectWrapperMongo] = client[MONGO_DB_NAME]
 db_queue_collection = db[QUEUE_COLLECTION]
 db_trash_collection = db[TRASH_COLLECTION]
 
-print("======== VTIGER EMAIL DIGEST SERVER ========")
-print("database loaded successfully.")
+logger.info("======== VTIGER EMAIL DIGEST SERVER ========")
+logger.info("database loaded successfully.")
 
 EMAIL_SETTINGS_RECIPIENTS = os.getenv("EMAIL_SETTINGS_RECIPIENTS") or ""
 EMAIL_SETTINGS_CC = os.getenv("EMAIL_SETTINGS_CC") or ""
@@ -74,6 +75,8 @@ def view_queue(
     if ?emailed_about=1 view all projects emailed about once
     if ?behind_schedule=true view projects that are behind schedule
     """
+
+    logger.info("GET -> /projects/queue")
     projects: list[ProjectWrapperMongo] = []
     query_filter = {}
     if emailed_about != None:
@@ -103,6 +106,7 @@ def add_project_to_queue(project: ProjectRequestBody):
     # write to db with datetime received
     # return that the data has been written to db successfully
 
+    logger.info("POST -> /projects/queue")
     UTC = ZoneInfo("UTC")
     now_utc = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
     now_houston_time = convert_UTC_to_houston(now_utc)
@@ -133,6 +137,7 @@ def add_project_to_queue(project: ProjectRequestBody):
     }
     # if behind schedule, upsert. if a behind schedule project with this project_no already exists in the queue, replace it with the new data. otherwise, it's new so insert as normal.
     upserted: bool = False
+    document_to_return = {}
     if behind_schedule == True:
         document_to_upsert = document_to_insert  # just so i'm clear on what it is.
         # update the modified time with the new value sent from vt
@@ -150,13 +155,25 @@ def add_project_to_queue(project: ProjectRequestBody):
         raw_result = replace_return.raw_result
         assert raw_result != None
         upserted = raw_result["updatedExisting"]
+        (
+            logger.info("upserted one document with project no. {}", project.project_no)
+            if upserted == True
+            else logger.info(
+                "inserted one document with project no. {}", project.project_no
+            )
+        )
+        document_to_return = document_to_upsert
     else:
         db_queue_collection.insert_one(document_to_insert)  # type: ignore
-    # document_to_insert["_id"] = str(document_to_insert["_id"])
+        logger.info("inserted one document with project no. {}", project.project_no)
+        # note that inserting a document causes the _id field to be attached to the object before it's added to the database. that's why _id appears here.
+        document_to_return = document_to_insert
+        # so i need to stringify the _id field so fastapi doesn't complain
+        document_to_return["_id"] = str(document_to_return["_id"])
     response = {
         "success": True,
         "upserted": upserted,
-        "document_added_to_database": document_to_insert,
+        "document_added_to_database": document_to_return,
     }
     return response
 
@@ -173,6 +190,7 @@ def clear_queue(
     if behind_schedule is true, delete those that are behind schedule
     """
 
+    logger.info("DELETE -> /projects/queue")
     projects: list[ProjectWrapperMongo] = []
     query_filter = {}
     if emailed_about != None:
@@ -204,9 +222,11 @@ def clear_queue(
 
     # otherwise, delete stuff
     db_queue_collection.delete_many(query_filter)
+    logger.info("deleted {} projects from queue.", len(projects))
 
     # deletion finished, now to insert into trash collection
     db_trash_collection.insert_many(projects)
+    logger.info("added {} projects to trash collection.", len(projects))
 
     # before returning gotta change ObjectId to string so fastapi doesn't complain
     for project in projects:
@@ -240,6 +260,8 @@ def trigger_email():
     get updated data on all of the older projects first, though.
     increment all documents' emailed_about by 1.
     """
+
+    logger.info("POST -> /projects/email")
     # get projects
     projects: list[ProjectWrapperMongo] = []
     projectsCursor = db_queue_collection.find()
@@ -248,6 +270,7 @@ def trigger_email():
     projects = sorted(
         projects, key=lambda project: project["project"]["cf_project_activities"]
     )
+    logger.info("{} projects fetched for emailing.", len(projects))
     # get projects that are not behind schedule that have been emailed about 0 times or 1 time.
     new_projects = [
         p["project"]
@@ -264,6 +287,12 @@ def trigger_email():
     behind_schedule_projects = [
         p.get("project") for p in projects if p.get("behind_schedule") == True
     ]
+    logger.info(
+        "new projects: {}. old projects: {}. behind schedule projects: {}.",
+        len(new_projects),
+        len(old_projects),
+        len(behind_schedule_projects),
+    )
     # lists are now sorted by activities
     # fetch updated data from vtiger on all the old projects, then add that data to those old projects
     for old_project in old_projects:
@@ -333,6 +362,9 @@ def trigger_email():
         query_filter = {}
         update_operation = {"$inc": {"emailed_about": 1}}
         db_queue_collection.update_many(query_filter, update_operation)
+        logger.info(
+            "email sent successfully. all projects' emailed_about count incremented."
+        )
 
     return {
         "new_projects_sf9": new_dict["sf9"],
