@@ -155,7 +155,13 @@ def add_project_to_queue(project: ProjectRequestBody):
         raw_result = replace_return.raw_result
         assert raw_result != None
         upserted = raw_result["updatedExisting"]
-        logger.info("upserted one document with project no. {}", project.project_no)
+        (
+            logger.info("upserted one document with project no. {}", project.project_no)
+            if upserted == True
+            else logger.info(
+                "inserted one document with project no. {}", project.project_no
+            )
+        )
         document_to_return = document_to_upsert
     else:
         db_queue_collection.insert_one(document_to_insert)  # type: ignore
