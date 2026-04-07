@@ -1,11 +1,11 @@
 from fastapi import Depends, APIRouter
+from fastapi.responses import PlainTextResponse
 from datetime import datetime, date
 import os
 from pymongo import MongoClient
 from pymongo.database import Database
 import requests
 import json
-from zoneinfo import ZoneInfo
 from loguru import logger
 from app.deps import get_current_username
 from app.class_types import (
@@ -16,9 +16,24 @@ from app.helper import (
     split_projects_list_by_activities,
     get_project_info_from_vtiger_by_number,
     convert_UTC_to_houston,
+    get_now_UTC_string,
 )
 
+# set up logger
+LOGS_DIR_PATH = os.getenv("LOGS_DIR_PATH") or ""
+if LOGS_DIR_PATH == "":
+    raise Exception("LOGS_DIR_PATH missing")
+now_houston = convert_UTC_to_houston(get_now_UTC_string())
+now_houston = now_houston.replace(" ", "--").replace(
+    ":", "-"
+)  # replace characters to make this a valid filename
+logfile_name = f"logfile_{now_houston}.log"
+logfile_path_and_name = os.path.join(LOGS_DIR_PATH, logfile_name)
+logger.add(os.path.join(LOGS_DIR_PATH, logfile_name), rotation="0:00")
+# alright. my logger will send message to both stderr and to a file.
 
+
+# gather env vars
 MONGO_URI_PREFIX = os.getenv("MONGO_URI_PREFIX") or ""
 MONGO_URI_ADDRESS = os.getenv("MONGO_URI_ADDRESS") or ""
 MONGO_USERNAME = os.getenv("MONGO_USERNAME") or ""
@@ -76,7 +91,7 @@ def view_queue(
     if ?behind_schedule=true view projects that are behind schedule
     """
 
-    logger.info("GET -> /projects/queue")
+    logger.info("GET -> /api/projects/queue")
     projects: list[ProjectWrapperMongo] = []
     query_filter = {}
     if emailed_about != None:
@@ -106,9 +121,8 @@ def add_project_to_queue(project: ProjectRequestBody):
     # write to db with datetime received
     # return that the data has been written to db successfully
 
-    logger.info("POST -> /projects/queue")
-    UTC = ZoneInfo("UTC")
-    now_utc = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
+    logger.info("POST -> /api/projects/queue")
+    now_utc = get_now_UTC_string()
     now_houston_time = convert_UTC_to_houston(now_utc)
     # be ready for behind_schedule coming from vtiger workflow to be a string or a bool or none.
     behind_schedule = (
@@ -190,7 +204,7 @@ def clear_queue(
     if behind_schedule is true, delete those that are behind schedule
     """
 
-    logger.info("DELETE -> /projects/queue")
+    logger.info("DELETE -> /api/projects/queue")
     projects: list[ProjectWrapperMongo] = []
     query_filter = {}
     if emailed_about != None:
@@ -261,7 +275,7 @@ def trigger_email():
     increment all documents' emailed_about by 1.
     """
 
-    logger.info("POST -> /projects/email")
+    logger.info("POST -> /api/projects/email")
     # get projects
     projects: list[ProjectWrapperMongo] = []
     projectsCursor = db_queue_collection.find()
@@ -387,3 +401,28 @@ def trigger_email():
         "behind_schedule_projects_count": len(behind_schedule_projects),
         "email_response": rbody,
     }
+
+
+@api_router.get("/logs")
+def view_logs():
+    """
+    return names of all log files.
+    """
+
+    logger.info("GET -> /api/logs")
+    log_file_list = os.listdir("logs")
+    return log_file_list
+
+
+@api_router.get("/logs/{log_name}", response_class=PlainTextResponse)
+def view_log(log_name: str):
+    """
+    return contents of one particular log file.
+    """
+
+    logger.info(f"GET -> /api/logs/{log_name}")
+    log_file_path = os.path.join(LOGS_DIR_PATH, log_name)
+    log_file_contents = ''
+    with open(log_file_path, 'r') as file: log_file_contents = file.read()
+    return log_file_contents
+    

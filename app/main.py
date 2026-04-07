@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from fastapi.security import HTTPBasic
 from app.routers import api
 
+# load env vars and set up app
 load_dotenv()
 app = FastAPI()
 security = HTTPBasic()

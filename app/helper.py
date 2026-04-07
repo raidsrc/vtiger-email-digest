@@ -90,8 +90,10 @@ def get_project_info_from_vtiger_by_number(project_number: str):
         )
         return None
     except:
-        print(f"Other error in get_project_info_from_vtiger_by_number for {project_number}.")
-        return None 
+        print(
+            f"Other error in get_project_info_from_vtiger_by_number for {project_number}."
+        )
+        return None
 
 
 def convert_UTC_to_houston(date_time: str | None = ""):
@@ -104,3 +106,10 @@ def convert_UTC_to_houston(date_time: str | None = ""):
     chicago_zone = ZoneInfo("America/Chicago")
     new_time = utc.astimezone(chicago_zone)
     return new_time.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def get_now_UTC_string():
+    """get the current utc time as a string that looks like 2026-04-07 02:04:17."""
+    UTC = ZoneInfo("UTC")
+    now_utc = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
+    return now_utc
