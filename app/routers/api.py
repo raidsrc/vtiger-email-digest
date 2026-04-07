@@ -75,6 +75,8 @@ def view_queue(
     if ?emailed_about=1 view all projects emailed about once
     if ?behind_schedule=true view projects that are behind schedule
     """
+
+    logger.info("GET -> /projects/queue")
     projects: list[ProjectWrapperMongo] = []
     query_filter = {}
     if emailed_about != None:
@@ -135,6 +137,7 @@ def add_project_to_queue(project: ProjectRequestBody):
     }
     # if behind schedule, upsert. if a behind schedule project with this project_no already exists in the queue, replace it with the new data. otherwise, it's new so insert as normal.
     upserted: bool = False
+    document_to_return = {}
     if behind_schedule == True:
         document_to_upsert = document_to_insert  # just so i'm clear on what it is.
         # update the modified time with the new value sent from vt
@@ -153,14 +156,18 @@ def add_project_to_queue(project: ProjectRequestBody):
         assert raw_result != None
         upserted = raw_result["updatedExisting"]
         logger.info("upserted one document with project no. {}", project.project_no)
+        document_to_return = document_to_upsert
     else:
         db_queue_collection.insert_one(document_to_insert)  # type: ignore
         logger.info("inserted one document with project no. {}", project.project_no)
-    # document_to_insert["_id"] = str(document_to_insert["_id"])
+        # note that inserting a document causes the _id field to be attached to the object before it's added to the database. that's why _id appears here.
+        document_to_return = document_to_insert
+        # so i need to stringify the _id field so fastapi doesn't complain
+        document_to_return["_id"] = str(document_to_return["_id"])
     response = {
         "success": True,
         "upserted": upserted,
-        "document_added_to_database": document_to_insert,
+        "document_added_to_database": document_to_return,
     }
     return response
 
@@ -177,6 +184,7 @@ def clear_queue(
     if behind_schedule is true, delete those that are behind schedule
     """
 
+    logger.info("DELETE -> /projects/queue")
     projects: list[ProjectWrapperMongo] = []
     query_filter = {}
     if emailed_about != None:
@@ -246,6 +254,8 @@ def trigger_email():
     get updated data on all of the older projects first, though.
     increment all documents' emailed_about by 1.
     """
+
+    logger.info("POST -> /projects/email")
     # get projects
     projects: list[ProjectWrapperMongo] = []
     projectsCursor = db_queue_collection.find()
@@ -271,7 +281,12 @@ def trigger_email():
     behind_schedule_projects = [
         p.get("project") for p in projects if p.get("behind_schedule") == True
     ]
-    logger.info("new projects: {}. old projects: {}. behind schedule projects: {}.", len(new_projects), len(old_projects), len(behind_schedule_projects))
+    logger.info(
+        "new projects: {}. old projects: {}. behind schedule projects: {}.",
+        len(new_projects),
+        len(old_projects),
+        len(behind_schedule_projects),
+    )
     # lists are now sorted by activities
     # fetch updated data from vtiger on all the old projects, then add that data to those old projects
     for old_project in old_projects:
@@ -341,7 +356,9 @@ def trigger_email():
         query_filter = {}
         update_operation = {"$inc": {"emailed_about": 1}}
         db_queue_collection.update_many(query_filter, update_operation)
-        logger.info("email sent successfully. all projects' emailed_about count incremented.")
+        logger.info(
+            "email sent successfully. all projects' emailed_about count incremented."
+        )
 
     return {
         "new_projects_sf9": new_dict["sf9"],
