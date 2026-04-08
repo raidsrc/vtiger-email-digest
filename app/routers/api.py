@@ -111,7 +111,7 @@ def add_project_to_queue(project: ProjectRequestBody):
             "project.project_no": project.project_no,
             "behind_schedule": True,
         }
-        replace_return = db_queue_collection.replace_one(query_filter, document_to_upsert, upsert=True)  # type: ignore
+        replace_return = db_collections["db_queue_collection"].replace_one(query_filter, document_to_upsert, upsert=True)  # type: ignore
         # there is no did_upsert. for some reason the autocompletion and the pymongo docs are wrong.
         # there is an updatedExisting property on the raw_result, though. using that.
         raw_result = replace_return.raw_result
@@ -126,7 +126,7 @@ def add_project_to_queue(project: ProjectRequestBody):
         )
         document_to_return = document_to_upsert
     else:
-        db_queue_collection.insert_one(document_to_insert)  # type: ignore
+        db_collections["db_queue_collection"].insert_one(document_to_insert)  # type: ignore
         logger.info("inserted one document with project no. {}", project.project_no)
         # note that inserting a document causes the _id field to be attached to the object before it's added to the database. that's why _id appears here.
         document_to_return = document_to_insert
