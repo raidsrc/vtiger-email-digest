@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
     logger.info("======== VTIGER EMAIL DIGEST SERVER ========")
     logger.info("environment variables loaded successfully.")
 
-    uri = f"{MONGO_URI_PREFIX}{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_URI_ADDRESS}"
+    uri = f"{MONGO_URI_PREFIX}{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_URI_ADDRESS}" 
     client: MongoClient[ProjectWrapperMongo] = MongoClient(uri)
     db: Database[ProjectWrapperMongo] = client[MONGO_DB_NAME]
     db_queue_collection = db[QUEUE_COLLECTION]
