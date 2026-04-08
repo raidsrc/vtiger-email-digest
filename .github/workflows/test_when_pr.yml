@@ -58,8 +58,5 @@ jobs:
       - name: install deps
         run: pip install -r requirements.txt
 
-      - name: start fastapi server 
-        run: fastapi dev app/main.py &
-
       - name: run tests
         run: pytest
