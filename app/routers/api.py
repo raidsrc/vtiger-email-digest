@@ -1,9 +1,7 @@
 from fastapi import Depends, APIRouter
 from fastapi.responses import PlainTextResponse
-from datetime import datetime, date
+from datetime import date
 import os
-from pymongo import MongoClient
-from pymongo.database import Database
 import requests
 import json
 from loguru import logger
@@ -18,55 +16,7 @@ from app.helper import (
     convert_UTC_to_houston,
     get_now_UTC_string,
 )
-
-# set up logger
-LOGS_DIR_PATH = os.getenv("LOGS_DIR_PATH") or ""
-if LOGS_DIR_PATH == "":
-    raise Exception("LOGS_DIR_PATH missing")
-now_houston = convert_UTC_to_houston(get_now_UTC_string())
-now_houston = now_houston.replace(" ", "--").replace(
-    ":", "-"
-)  # replace characters to make this a valid filename
-logfile_name = f"logfile_{now_houston}.log"
-logfile_path_and_name = os.path.join(LOGS_DIR_PATH, logfile_name)
-logger.add(os.path.join(LOGS_DIR_PATH, logfile_name), rotation="0:00")
-# alright. my logger will send message to both stderr and to a file.
-
-
-# gather env vars
-MONGO_URI_PREFIX = os.getenv("MONGO_URI_PREFIX") or ""
-MONGO_URI_ADDRESS = os.getenv("MONGO_URI_ADDRESS") or ""
-MONGO_USERNAME = os.getenv("MONGO_USERNAME") or ""
-MONGO_PASSWORD = os.getenv("MONGO_PASSWORD") or ""
-MONGO_DB_NAME = os.getenv("MONGO_DB_NAME") or ""
-QUEUE_COLLECTION = os.getenv("QUEUE_COLLECTION") or ""
-TRASH_COLLECTION = os.getenv("TRASH_COLLECTION") or ""
-if MONGO_URI_PREFIX == "":
-    raise Exception("MONGO_URI_PREFIX missing")
-if MONGO_URI_ADDRESS == "":
-    raise Exception("MONGO_URI_ADDRESS missing")
-if MONGO_USERNAME == "":
-    raise Exception("MONGO_USERNAME missing")
-if MONGO_PASSWORD == "":
-    raise Exception("MONGO_PASSWORD missing")
-if MONGO_DB_NAME == "":
-    raise Exception("MONGO_DB_NAME missing")
-if QUEUE_COLLECTION == "":
-    raise Exception("QUEUE_COLLECTION missing")
-if TRASH_COLLECTION == "":
-    raise Exception("TRASH_COLLECTION missing")
-
-logger.info("======== VTIGER EMAIL DIGEST SERVER ========")
-logger.info("environment variables loaded successfully.")
-
-uri = f"{MONGO_URI_PREFIX}{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_URI_ADDRESS}"
-client: MongoClient[ProjectWrapperMongo] = MongoClient(uri)
-db: Database[ProjectWrapperMongo] = client[MONGO_DB_NAME]
-db_queue_collection = db[QUEUE_COLLECTION]
-db_trash_collection = db[TRASH_COLLECTION]
-
-logger.info("======== VTIGER EMAIL DIGEST SERVER ========")
-logger.info("database loaded successfully.")
+from app.db import db_collections
 
 EMAIL_SETTINGS_RECIPIENTS = os.getenv("EMAIL_SETTINGS_RECIPIENTS") or ""
 EMAIL_SETTINGS_CC = os.getenv("EMAIL_SETTINGS_CC") or ""
@@ -90,7 +40,6 @@ def view_queue(
     if ?emailed_about=1 view all projects emailed about once
     if ?behind_schedule=true view projects that are behind schedule
     """
-
     logger.info("GET -> /api/projects/queue")
     projects: list[ProjectWrapperMongo] = []
     query_filter = {}
@@ -98,7 +47,7 @@ def view_queue(
         query_filter["emailed_about"] = emailed_about
     if behind_schedule != None:
         query_filter["behind_schedule"] = behind_schedule
-    projectsCursor = db_queue_collection.find(query_filter)
+    projectsCursor = db_collections["db_queue_collection"].find(query_filter)
 
     for project in projectsCursor:
         oid = str(project["_id"])
@@ -120,7 +69,6 @@ def add_project_to_queue(project: ProjectRequestBody):
     # break down the body into all the pieces and assign to vars
     # write to db with datetime received
     # return that the data has been written to db successfully
-
     logger.info("POST -> /api/projects/queue")
     now_utc = get_now_UTC_string()
     now_houston_time = convert_UTC_to_houston(now_utc)
@@ -203,7 +151,6 @@ def clear_queue(
     default behavior is to clear only the projects where emailed_about >= 2.
     if behind_schedule is true, delete those that are behind schedule
     """
-
     logger.info("DELETE -> /api/projects/queue")
     projects: list[ProjectWrapperMongo] = []
     query_filter = {}
@@ -215,7 +162,7 @@ def clear_queue(
         # default behavior is what we'll go for most of the time.
         query_filter = {"emailed_about": {"$gte": 2}}
 
-    projectsCursor = db_queue_collection.find(query_filter)
+    projectsCursor = db_collections["db_queue_collection"].find(query_filter)
 
     for project in projectsCursor:
         oid = str(project["_id"])
@@ -235,11 +182,11 @@ def clear_queue(
         return response
 
     # otherwise, delete stuff
-    db_queue_collection.delete_many(query_filter)
+    db_collections["db_queue_collection"].delete_many(query_filter)
     logger.info("deleted {} projects from queue.", len(projects))
 
     # deletion finished, now to insert into trash collection
-    db_trash_collection.insert_many(projects)
+    db_collections["db_trash_collection"].insert_many(projects)
     logger.info("added {} projects to trash collection.", len(projects))
 
     # before returning gotta change ObjectId to string so fastapi doesn't complain
@@ -260,6 +207,7 @@ def view_email_settings():
     """
     view current email settings.
     """
+    logger.info("GET -> /api/projects/email")
     return {
         "EMAIL_SETTINGS_RECIPIENTS": EMAIL_SETTINGS_RECIPIENTS,
         "EMAIL_SETTINGS_CC": EMAIL_SETTINGS_CC,
@@ -274,11 +222,10 @@ def trigger_email():
     get updated data on all of the older projects first, though.
     increment all documents' emailed_about by 1.
     """
-
     logger.info("POST -> /api/projects/email")
     # get projects
     projects: list[ProjectWrapperMongo] = []
-    projectsCursor = db_queue_collection.find()
+    projectsCursor = db_collections["db_queue_collection"].find()
     for project in projectsCursor:
         projects.append(project)
     projects = sorted(
@@ -375,7 +322,9 @@ def trigger_email():
     if rbody["ErrorCode"] == 0:
         query_filter = {}
         update_operation = {"$inc": {"emailed_about": 1}}
-        db_queue_collection.update_many(query_filter, update_operation)
+        db_collections["db_queue_collection"].update_many(
+            query_filter, update_operation
+        )
         logger.info(
             "email sent successfully. all projects' emailed_about count incremented."
         )
@@ -408,7 +357,6 @@ def view_logs():
     """
     return names of all log files.
     """
-
     logger.info("GET -> /api/logs")
     log_file_list = os.listdir("logs")
     return log_file_list
@@ -419,10 +367,10 @@ def view_log(log_name: str):
     """
     return contents of one particular log file.
     """
-
+    LOGS_DIR_PATH = os.getenv("LOGS_DIR_PATH") or ""
     logger.info(f"GET -> /api/logs/{log_name}")
     log_file_path = os.path.join(LOGS_DIR_PATH, log_name)
-    log_file_contents = ''
-    with open(log_file_path, 'r') as file: log_file_contents = file.read()
+    log_file_contents = ""
+    with open(log_file_path, "r") as file:
+        log_file_contents = file.read()
     return log_file_contents
-    
