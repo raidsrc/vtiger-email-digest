@@ -328,6 +328,8 @@ def trigger_email():
         logger.info(
             "email sent successfully. all projects' emailed_about count incremented."
         )
+    else:
+        logger.error("email not sent successfully.")
 
     return {
         "new_projects_sf9": new_dict["sf9"],
