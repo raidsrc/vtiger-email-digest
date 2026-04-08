@@ -8,13 +8,10 @@ from contextlib import asynccontextmanager
 from loguru import logger
 from datetime import datetime
 import os
-from pymongo import MongoClient
-from pymongo.database import Database
-from app.class_types import ProjectWrapperMongo
+from app.db import DatabaseLayer
 from app.helper import convert_UTC_to_houston, get_now_UTC_string
 from app.routers import api
-from app.db import db_collections
-
+from app.db_setup import db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,7 +28,7 @@ async def lifespan(app: FastAPI):
     logger.add(logfile_path_and_name, rotation="0:00")
     # alright. my logger will send message to both stderr and to a file.
 
-    # gather env vars
+    # gather db config env vars
     MONGO_URI_PREFIX = os.getenv("MONGO_URI_PREFIX") or ""
     MONGO_URI_ADDRESS = os.getenv("MONGO_URI_ADDRESS") or ""
     MONGO_USERNAME = os.getenv("MONGO_USERNAME") or ""
@@ -54,22 +51,25 @@ async def lifespan(app: FastAPI):
     if TRASH_COLLECTION == "":
         raise Exception("TRASH_COLLECTION missing")
 
-    logger.info("======== VTIGER EMAIL DIGEST SERVER ========")
-    logger.info("environment variables loaded successfully.")
+    database_layer = DatabaseLayer(
+        MONGO_URI_PREFIX,
+        MONGO_URI_ADDRESS,
+        MONGO_USERNAME,
+        MONGO_PASSWORD,
+        MONGO_DB_NAME,
+        QUEUE_COLLECTION,
+        TRASH_COLLECTION,
+    )
+    database_layer.connect()
+    db = database_layer
+    db.queue_collection = 
+    db.trash_collection = 
 
-    uri = f"{MONGO_URI_PREFIX}{MONGO_USERNAME}:{MONGO_PASSWORD}@{MONGO_URI_ADDRESS}" 
-    client: MongoClient[ProjectWrapperMongo] = MongoClient(uri)
-    db: Database[ProjectWrapperMongo] = client[MONGO_DB_NAME]
-    db_queue_collection = db[QUEUE_COLLECTION]
-    db_trash_collection = db[TRASH_COLLECTION]
-    db_collections["db_queue_collection"] = db_queue_collection
-    db_collections["db_trash_collection"] = db_trash_collection
-
     logger.info("======== VTIGER EMAIL DIGEST SERVER ========")
-    logger.info("database loaded successfully.")
+    logger.info("app initialized successfully.")
 
     yield
-    client.close()
+    database_layer.close()
 
 
 # load env vars and set up app

@@ -16,7 +16,7 @@ from app.helper import (
     convert_UTC_to_houston,
     get_now_UTC_string,
 )
-from app.db import db_collections
+from app.db_setup import db
 
 EMAIL_SETTINGS_RECIPIENTS = os.getenv("EMAIL_SETTINGS_RECIPIENTS") or ""
 EMAIL_SETTINGS_CC = os.getenv("EMAIL_SETTINGS_CC") or ""
@@ -47,7 +47,7 @@ def view_queue(
         query_filter["emailed_about"] = emailed_about
     if behind_schedule != None:
         query_filter["behind_schedule"] = behind_schedule
-    projectsCursor = db_collections["db_queue_collection"].find(query_filter)
+    projectsCursor = db.queue_collection.find(query_filter)
 
     for project in projectsCursor:
         oid = str(project["_id"])
@@ -162,7 +162,7 @@ def clear_queue(
         # default behavior is what we'll go for most of the time.
         query_filter = {"emailed_about": {"$gte": 2}}
 
-    projectsCursor = db_collections["db_queue_collection"].find(query_filter)
+    projectsCursor = db.queue_collection.find(query_filter)
 
     for project in projectsCursor:
         oid = str(project["_id"])
@@ -182,11 +182,11 @@ def clear_queue(
         return response
 
     # otherwise, delete stuff
-    db_collections["db_queue_collection"].delete_many(query_filter)
+    db.queue_collection.delete_many(query_filter)
     logger.info("deleted {} projects from queue.", len(projects))
 
     # deletion finished, now to insert into trash collection
-    db_collections["db_trash_collection"].insert_many(projects)
+    db.trash_collection.insert_many(projects)
     logger.info("added {} projects to trash collection.", len(projects))
 
     # before returning gotta change ObjectId to string so fastapi doesn't complain
@@ -225,7 +225,7 @@ def trigger_email():
     logger.info("POST -> /api/projects/email")
     # get projects
     projects: list[ProjectWrapperMongo] = []
-    projectsCursor = db_collections["db_queue_collection"].find()
+    projectsCursor = db.queue_collection.find()
     for project in projectsCursor:
         projects.append(project)
     projects = sorted(
@@ -322,7 +322,7 @@ def trigger_email():
     if rbody["ErrorCode"] == 0:
         query_filter = {}
         update_operation = {"$inc": {"emailed_about": 1}}
-        db_collections["db_queue_collection"].update_many(
+        db.queue_collection.update_many(
             query_filter, update_operation
         )
         logger.info(
