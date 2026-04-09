@@ -2,6 +2,7 @@ import secrets
 from typing import Annotated
 import os
 from dotenv import load_dotenv
+from loguru import logger 
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -29,6 +30,7 @@ def get_current_username(
         current_password_bytes, correct_password_bytes
     )
     if not (is_correct_username and is_correct_password):
+        logger.warning('failed basic authentication attempt.')
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
