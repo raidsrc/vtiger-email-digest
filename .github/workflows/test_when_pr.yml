@@ -31,6 +31,7 @@ jobs:
       BASIC_AUTH_PASS: ${{secrets.BASIC_AUTH_PASS}}
       VT_USER: ${{vars.VT_USER}}
       VT_ACCESSKEY: ${{secrets.VT_ACCESSKEY}}
+      LOGS_DIR_PATH: ${{vars.LOGS_DIR_PATH}}
 
     steps:
       - name: checkout repo
