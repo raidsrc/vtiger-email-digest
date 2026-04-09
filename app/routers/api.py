@@ -1,5 +1,4 @@
 from fastapi import Depends, APIRouter
-from fastapi.responses import PlainTextResponse
 from datetime import date
 import os
 import requests
@@ -17,6 +16,7 @@ from app.helper import (
     get_now_UTC_string,
 )
 from app.db import db_collections
+from app.routers import logs
 
 EMAIL_SETTINGS_RECIPIENTS = os.getenv("EMAIL_SETTINGS_RECIPIENTS") or ""
 EMAIL_SETTINGS_CC = os.getenv("EMAIL_SETTINGS_CC") or ""
@@ -24,8 +24,8 @@ EMAIL_SETTINGS_BCC = os.getenv("EMAIL_SETTINGS_BCC") or ""
 POSTMARK_SERVER_TOKEN = os.getenv("POSTMARK_SERVER_TOKEN") or ""
 # not throwing error if these ones are empty string because they should be allowed to be empty string
 
-
 api_router = APIRouter(dependencies=[Depends(get_current_username)])
+api_router.include_router(logs.log_router)
 
 
 @api_router.get("/projects/queue")
@@ -352,27 +352,3 @@ def trigger_email():
         "behind_schedule_projects_count": len(behind_schedule_projects),
         "email_response": rbody,
     }
-
-
-@api_router.get("/logs")
-def view_logs():
-    """
-    return names of all log files.
-    """
-    logger.info("GET -> /api/logs")
-    log_file_list = os.listdir("logs")
-    return log_file_list
-
-
-@api_router.get("/logs/{log_name}", response_class=PlainTextResponse)
-def view_log(log_name: str):
-    """
-    return contents of one particular log file.
-    """
-    LOGS_DIR_PATH = os.getenv("LOGS_DIR_PATH") or ""
-    logger.info(f"GET -> /api/logs/{log_name}")
-    log_file_path = os.path.join(LOGS_DIR_PATH, log_name)
-    log_file_contents = ""
-    with open(log_file_path, "r") as file:
-        log_file_contents = file.read()
-    return log_file_contents
