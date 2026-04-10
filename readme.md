@@ -6,6 +6,8 @@ every monday, wednesday, and friday morning, a cron job tells this server to sen
 
 another cron job comes immediately after, telling the server to trash all projects whose counter value is 2 or higher. this ensures that all projects are included in 2 summary emails and no more.
 
+also projects that are behind schedule get sent here too on mondays and thursdays. data on these projects is included in the project digest email.
+
 # more about
 
 get routes for viewing email settings and current queue
