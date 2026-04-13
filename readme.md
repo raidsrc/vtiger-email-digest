@@ -2,11 +2,14 @@
 
 every time a vt project is created, the project data is sent to this server and stored in a db. the "queue."
 
-every monday, wednesday, and friday morning, a cron job tells this server to send an email to our lab staff. the server fetches the all the project data for multiple projects from the queue, formats it into a table, and sends an email to the lab staff summarizing the data. each project has a counter on it that is incremented by 1 each time the project is included in an email. it starts at 0 when a project is first added to the db.
+also projects that are behind schedule get sent here all at once MWF morning around 5 AM PT. data on these projects is included in the project digest email.
 
-another cron job comes immediately after, telling the server to trash all projects whose counter value is 2 or higher. this ensures that all projects are included in 2 summary emails and no more.
+every monday, wednesday, and friday morning at 7 AM PT, a cron job tells this server to send an email to our lab staff. the server fetches all the project data from the queue, formats it into a table, and sends an email to the lab staff summarizing the data. each project has a counter on it that is incremented by 1 each time the project is included in an email. it starts at 0 when a project is first added to the db.
 
-also projects that are behind schedule get sent here too on mondays and thursdays. data on these projects is included in the project digest email.
+another cron job comes immediately after, telling the server to trash all projects whose counter value is 2 or higher. this ensures that all projects that aren't behind schedule are included in 2 summary emails and no more.
+
+yet another cron job comes after that telling the server to trash all projects where emailed_about=1&behind_schedule=true. this ensures all the behind schedule projects that have been emailed about once (in the email that was just sent) get trashed. 
+
 
 # more about
 

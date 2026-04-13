@@ -150,6 +150,7 @@ def clear_queue(
     remove projects from queue. this means moving projects from projectQueue into projectQueueTrash.
     default behavior is to clear only the projects where emailed_about >= 2.
     if behind_schedule is true, delete those that are behind schedule
+    emailed_about is the emailed about value self explanatory 
     """
     logger.info("DELETE -> /api/projects/queue")
     projects: list[ProjectWrapperMongo] = []
