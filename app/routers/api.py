@@ -285,7 +285,7 @@ def trigger_email():
         "X-Postmark-Server-Token": f"{POSTMARK_SERVER_TOKEN}",
     }
     data = {
-        "From": "noreply@virovek.com",
+        "From": "digest-emailer@virovek.com",
         "To": EMAIL_SETTINGS_RECIPIENTS,
         "Cc": EMAIL_SETTINGS_CC,
         "MessageStream": "broadcast",
