@@ -277,6 +277,8 @@ def trigger_email():
     old_dict = split_projects_list_by_activities(old_projects)
 
     # as for the behind schedule projects: i'll just dump them all into a single table. there shouldn't be that many of them anyway. no further processing needed.
+    # it turns out there are a ton of them. looks like i'll have to treat them the same way i treat the others, or else it'll be a giant wall of text.
+    behind_schedule_dict = split_projects_list_by_activities(behind_schedule_projects)
 
     # now send a req to tell postmark to send an email
     headers = {
@@ -289,7 +291,7 @@ def trigger_email():
         "To": EMAIL_SETTINGS_RECIPIENTS,
         "Cc": EMAIL_SETTINGS_CC,
         "MessageStream": "broadcast",
-        "TemplateAlias": "digest-template-2",
+        "TemplateAlias": "digest-template-3",
         "TemplateModel": {
             "today_nice": date.today().strftime("%A, %B %d, %Y"),
             "today_date": str(date.today()),
@@ -309,7 +311,13 @@ def trigger_email():
             "old_projects_assay": old_dict["assay"],
             "old_projects_other": old_dict["other"],
             "old_projects_count": len(old_projects),
-            "behind_schedule_projects": behind_schedule_projects,
+            "behind_schedule_projects_sf9": behind_schedule_dict["sf9"],
+            "behind_schedule_projects_hek293": behind_schedule_dict["hek293"],
+            "behind_schedule_projects_cloning": behind_schedule_dict["cloning"],
+            "behind_schedule_projects_dna": behind_schedule_dict["dna"],
+            "behind_schedule_projects_task": behind_schedule_dict["task"],
+            "behind_schedule_projects_assay": behind_schedule_dict["assay"],
+            "behind_schedule_projects_other": behind_schedule_dict["other"],
             "behind_schedule_projects_count": len(behind_schedule_projects),
         },
     }
