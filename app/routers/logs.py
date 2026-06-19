@@ -16,7 +16,8 @@ def view_logs():
     return names of all log files.
     """
     logger.info("GET -> /api/logs")
-    log_file_list = os.listdir("logs").sort()
+    log_file_list = os.listdir("logs")
+    log_file_list.sort()
     return log_file_list
 
 
